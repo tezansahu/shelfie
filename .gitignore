@@ -1,0 +1,41 @@
+# Supabase credentials (contains real API keys)
+browser-extension/config.js
+
+# Environment files
+.env
+.env.local
+.env.development
+.env.production
+
+# Node modules
+node_modules/
+
+# Flutter build files
+flutter-app/build/
+flutter-app/.dart_tool/
+flutter-app/.flutter-plugins
+flutter-app/.flutter-plugins-dependencies
+flutter-app/.packages
+flutter-app/pubspec.lock
+
+# IDE files
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+
+# Supabase local development
+backend/supabase/.branches
+backend/supabase/.temp
