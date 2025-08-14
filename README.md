@@ -1,37 +1,50 @@
-# Shelfie - Phase 1 Implementation
+# Shelfie - Personal Read & Watch Later System
 
-Phase 1 of the Shelfie read/watch later system is now complete! This implementation includes:
+## Current Status: Phase 2 Complete! 🎉
 
-## ✅ What's Included
+**Phase 1** (MVP Save & Consume) ✅ Complete  
+**Phase 2** (Tags, Search, Filters) ✅ Complete  
+**Phase 3** (Analytics) - Next up  
+
+## ✅ What's Included (Phases 1 & 2)
 
 ### 🗄️ Database (Supabase)
-- Complete PostgreSQL schema with items, users, tags, and events tables
+- Complete PostgreSQL schema with items, users, tags, and item_tags tables
+- Advanced search functions with full-text search (pg_trgm)
+- Preset tag seeding (17+ categories)
 - Triggers for automatic timestamp updates and status management
-- Indexes for performance
-- Views for easy data access
+- Views for efficient data access with tag aggregation
 
 ### 🔧 Backend (Supabase Edge Functions)
-- `save-url` Edge Function for processing URLs and extracting metadata
+- `save-url` - URL processing and metadata extraction (Phase 1)
+- `add-item-manual` - Manual URL addition from app (Phase 2)
+- `list-presets` - Tag discovery and management (Phase 2)
 - YouTube video detection and thumbnail extraction
-- HTML metadata parsing (title, description, Open Graph images)
-- Deduplication logic
-- Error handling and CORS support
+- HTML metadata parsing with advanced heuristics
+- Deduplication and error handling
 
 ### 🌐 Browser Extension (Chrome/Edge)
-- Manifest V3 compatible
-- Right-click context menu "Save to Read/Watch Later"
+- Manifest V3 compatible with context menu integration
+- Right-click "Save to Read/Watch Later" functionality
 - Configuration popup for Supabase credentials
-- Offline queue for failed saves
+- Offline queue for failed saves with retry logic
 - Visual feedback and notifications
 
 ### 📱 Flutter App (Windows Desktop + Android)
-- Material 3 design with light/dark theme support
-- Three main tabs: Reading, Viewing, Archive
-- Item cards with thumbnails, titles, and metadata
-- Mark as read/watched functionality
-- Manual URL addition
-- Pull-to-refresh and error handling
-- State management with Riverpod
+- **Phase 1 Features:**
+  - Material 3 design with light/dark theme support
+  - Three main tabs: Reading, Viewing, Archive
+  - Item cards with thumbnails, titles, and metadata
+  - Mark as read/watched functionality
+  - Manual URL addition and deletion
+  - Pull-to-refresh and comprehensive error handling
+
+- **Phase 2 Features:**
+  - **Tag System:** Preset and custom tags with visual indicators
+  - **Search & Filters:** Full-text search across titles, descriptions, domains
+  - **Smart Filtering:** Auto content-type filtering per tab (Reading=Articles, Viewing=Videos)
+  - **Tag Management:** Add/remove tags with usage counts and selector dialog
+  - **Advanced UI:** Expandable filter interface with active filter indicators
 
 ## 🚀 Getting Started
 
@@ -133,7 +146,65 @@ Phase 1 of the Shelfie read/watch later system is now complete! This implementat
    flutter run -d android
    ```
 
-## 📋 Phase 1 Features
+## 📋 Implemented Features
+
+### Phase 1 - MVP Save & Consume ✅
+- **Save from Browser**: Right-click context menu to save articles and videos
+- **Cross-Platform App**: Windows desktop and Android support  
+- **Content Organization**: Reading (articles) and Viewing (videos) tabs
+- **Item Management**: Mark as read/watched, archive, delete
+- **Manual URL Addition**: Add URLs directly from the app
+- **Rich Metadata**: Automatic title, description, and thumbnail extraction
+- **YouTube Support**: Special handling for YouTube videos with thumbnails
+
+### Phase 2 - Tags, Search, Filters ✅
+- **Tag System**: 17+ preset tags (ai-ml, engineering, product, etc.) + custom tags
+- **Advanced Search**: Full-text search across titles, descriptions, and domains
+- **Smart Filtering**: 
+  - Auto content-type filtering per tab (Reading=Articles, Viewing=Videos)
+  - Multi-select tag filtering with usage counts
+  - Combined search + filter functionality
+- **Tag Management**: 
+  - Add/remove tags from items with visual selector
+  - Preset vs custom tag distinction with icons
+  - Tag usage analytics and counts
+- **Intelligent UX**:
+  - Expandable filter interface with active filter indicators
+  - Tab-specific auto-filtering (hidden from user on Reading/Viewing tabs)
+  - Archive tab supports both content types with manual filtering
+
+## 🧪 Testing Your Setup
+
+### Core Functionality Testing
+1. **Save from Extension**: Right-click on any webpage → "Save to Read/Watch Later"
+2. **View in App**: Open Flutter app and see items in Reading/Viewing tabs
+3. **Mark Complete**: Mark items as read/watched and see them move to Archive
+4. **Manual Add**: Use the + button to manually add URLs
+5. **Delete Items**: Use delete button to remove items
+
+### Phase 2 Feature Testing  
+6. **Tag Management**: Click tag icon on item cards to add/remove tags
+7. **Search Functionality**: Use search bar to find items by title/description/domain
+8. **Tag Filtering**: Use filter controls to show items with specific tags
+9. **Smart Tab Filtering**: Switch between Reading/Viewing tabs to see auto-filtering
+10. **Custom Tags**: Create new tags through the tag selector dialog
+11. **Combined Filtering**: Use search + tag filters together
+12. **Filter Clearing**: Test individual and bulk filter clearing
+
+## 📚 Documentation & Status
+
+- **[PHASE1-STATUS.md](PHASE1-STATUS.md)** - Complete Phase 1 implementation details
+- **[PHASE2-STATUS.md](PHASE2-STATUS.md)** - Complete Phase 2 implementation details  
+- **[prd.md](prd.md)** - Full product requirements and technical specifications
+
+## 🗂️ Next Phase - Analytics
+
+**Phase 3** will include:
+- Content consumption analytics and metrics
+- Reading/watching streaks and habits
+- Tag usage analytics and trends  
+- Time-based completion statistics
+- Domain and source analysis
 
 ### Browser Extension
 - ✅ Right-click context menu to save URLs
@@ -210,30 +281,39 @@ shelfie/
 - **"supabase is not recognized"**: Install the CLI using Chocolatey, Scoop, or direct download
 - **npm global install error**: Use `npx supabase` instead of global install
 - **Permission errors**: Run terminal as administrator
-- **Can't install CLI**: Use the manual setup method in `SETUP-NO-CLI.md`
+- **Can't install CLI**: Use the manual setup method in database migrations
 - **Alternative**: Use `npx supabase` commands without global installation
 
 ### Extension Issues
 - Make sure your Supabase URL and API key are correctly configured
 - Check the browser console for error messages
 - Verify CORS settings in Supabase
+- Test the extension on different websites
 
 ### Flutter App Issues
 - Run `flutter pub get` to ensure dependencies are installed
 - Run `flutter pub run build_runner build` to generate code
 - Check that Supabase credentials are correctly set in main.dart
+- Verify Flutter SDK version (3.8.1+)
 
 ### Backend Issues
-- Verify Edge Function is deployed with `supabase functions list`
-- Check Edge Function logs with `supabase functions logs save-url`
-- Ensure database migration ran successfully
+- Verify Edge Functions are deployed with `supabase functions list`
+- Check Edge Function logs with `supabase functions logs`
+- Ensure database migrations ran successfully
+- Test tag functionality and search operations
 
-## 🎯 Testing Phase 1
+## 🎯 What's Working
 
-1. **Extension**: Right-click on any webpage → "Save to Read/Watch Later"
-2. **App**: Open Flutter app and see the item appear in Reading or Viewing tab
-3. **Complete**: Mark item as read/watched and see it move to Archive
-4. **Manual Add**: Use the + button in app to manually add URLs
-5. **Delete**: Use delete button to remove items
+✅ **Save & Consume Pipeline**: Browser extension → Supabase → Flutter app  
+✅ **Content Organization**: Reading/Viewing tabs with smart filtering  
+✅ **Tag System**: Preset and custom tags with full management  
+✅ **Advanced Search**: Full-text search with tag filtering  
+✅ **Cross-Platform**: Windows desktop and Android apps  
+✅ **Rich Metadata**: Automatic extraction for articles and YouTube videos  
+✅ **Smart UX**: Tab-specific auto-filtering and intelligent UI  
 
-Phase 1 provides the core MVP functionality for saving and consuming content across devices!
+**Phase 1 & 2 provide a complete personal knowledge management system!** 📚✨
+
+---
+
+*Ready for Phase 3 analytics to track your reading habits and optimize your knowledge consumption!*
