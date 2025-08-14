@@ -32,61 +32,218 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    
     return Scaffold(
+      backgroundColor: theme.colorScheme.background,
       appBar: AppBar(
-        title: const Text(
-          'Shelfie',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-        bottom: TabBar(
-          controller: _tabController,
-          tabs: const [
-            Tab(icon: Icon(Icons.article), text: 'Reading'),
-            Tab(icon: Icon(Icons.video_library), text: 'Viewing'),
-            Tab(icon: Icon(Icons.archive), text: 'Archive'),
-            Tab(icon: Icon(Icons.analytics), text: 'Analytics'),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primary,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: theme.colorScheme.primary.withOpacity(0.3),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: const Icon(
+                Icons.library_books,
+                color: Colors.white,
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 12),
+            const Text('Shelfie'),
           ],
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.add),
-            onPressed: () => _showAddItemDialog(context),
-            tooltip: 'Add URL',
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        backgroundColor: Colors.transparent,
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(60),
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 16),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surface,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: theme.colorScheme.primary.withOpacity(0.1),
+                  blurRadius: 20,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: TabBar(
+              controller: _tabController,
+              dividerColor: Colors.transparent,
+              indicatorSize: TabBarIndicatorSize.tab,
+              indicator: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                color: theme.colorScheme.primary,
+                boxShadow: [
+                  BoxShadow(
+                    color: theme.colorScheme.primary.withOpacity(0.3),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              labelColor: Colors.white,
+              unselectedLabelColor: theme.colorScheme.onSurface.withOpacity(0.7),
+              labelStyle: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+              unselectedLabelStyle: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
+              tabs: [
+                _buildModernTab(Icons.article_outlined, 'Reading', theme),
+                _buildModernTab(Icons.video_library_outlined, 'Viewing', theme),
+                _buildModernTab(Icons.archive_outlined, 'Archive', theme),
+                _buildModernTab(Icons.analytics_outlined, 'Analytics', theme),
+              ],
+            ),
           ),
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () => _refreshData(),
-            tooltip: 'Refresh',
+        ),
+        actions: [
+          Container(
+            margin: const EdgeInsets.only(right: 8),
+            child: Row(
+              children: [
+                _buildModernActionButton(
+                  context,
+                  icon: Icons.add_rounded,
+                  onPressed: () => _showAddItemDialog(context),
+                  tooltip: 'Add URL',
+                ),
+                const SizedBox(width: 8),
+                _buildModernActionButton(
+                  context,
+                  icon: Icons.refresh_rounded,
+                  onPressed: () => _refreshData(),
+                  tooltip: 'Refresh',
+                ),
+              ],
+            ),
           ),
         ],
       ),
-      body: TabBarView(
-        controller: _tabController,
-        children: [
-          // Reading Tab (Articles)
-          ItemsListWithSearch(
-            provider: unreadArticlesProvider,
-            emptyMessage: 'No articles to read',
-            emptyIcon: Icons.article,
-            contentType: ContentType.article,
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              theme.colorScheme.background,
+              theme.colorScheme.surface,
+            ],
           ),
-          // Viewing Tab (Videos)
-          ItemsListWithSearch(
-            provider: unreadVideosProvider,
-            emptyMessage: 'No videos to watch',
-            emptyIcon: Icons.video_library,
-            contentType: ContentType.video,
-          ),
-          // Archive Tab
-          ItemsListWithSearch(
-            provider: archivedItemsProvider,
-            emptyMessage: 'No completed items',
-            emptyIcon: Icons.archive,
-            isArchive: true,
-          ),
-          // Analytics Tab
-          const AnalyticsScreen(),
-        ],
+        ),
+        child: TabBarView(
+          controller: _tabController,
+          children: [
+            // Reading Tab (Articles)
+            _buildModernTabContent(
+              ItemsListWithSearch(
+                provider: unreadArticlesProvider,
+                emptyMessage: 'No articles to read',
+                emptyIcon: Icons.article_outlined,
+                contentType: ContentType.article,
+              ),
+            ),
+            // Viewing Tab (Videos)
+            _buildModernTabContent(
+              ItemsListWithSearch(
+                provider: unreadVideosProvider,
+                emptyMessage: 'No videos to watch',
+                emptyIcon: Icons.video_library_outlined,
+                contentType: ContentType.video,
+              ),
+            ),
+            // Archive Tab
+            _buildModernTabContent(
+              ItemsListWithSearch(
+                provider: archivedItemsProvider,
+                emptyMessage: 'No completed items',
+                emptyIcon: Icons.archive_outlined,
+                isArchive: true,
+              ),
+            ),
+            // Analytics Tab
+            _buildModernTabContent(const AnalyticsScreen()),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildModernTab(IconData icon, String text, ThemeData theme) {
+    return Container(
+      height: 44,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          // On mobile screens, show icon only to save space
+          final isMobile = MediaQuery.of(context).size.width < 600;
+          
+          if (isMobile) {
+            return Tooltip(
+              message: text,
+              child: Icon(icon, size: 20),
+            );
+          }
+          
+          // On larger screens, show both icon and text
+          return Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 18),
+              const SizedBox(width: 6),
+              Text(text),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildModernTabContent(Widget child) {
+    return Container(
+      margin: const EdgeInsets.only(top: 16),
+      child: child,
+    );
+  }
+
+  Widget _buildModernActionButton(
+    BuildContext context, {
+    required IconData icon,
+    required VoidCallback onPressed,
+    required String tooltip,
+  }) {
+    final theme = Theme.of(context);
+    return Container(
+      decoration: BoxDecoration(
+        color: theme.colorScheme.primary.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: theme.colorScheme.primary.withOpacity(0.2),
+        ),
+      ),
+      child: IconButton(
+        icon: Icon(icon, color: theme.colorScheme.primary),
+        onPressed: onPressed,
+        tooltip: tooltip,
+        padding: const EdgeInsets.all(8),
+        constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
       ),
     );
   }

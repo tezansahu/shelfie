@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shelfie/models/item.dart';
+import '../models/item.dart';
 import '../providers/items_provider.dart';
 
 class AddItemDialog extends ConsumerStatefulWidget {

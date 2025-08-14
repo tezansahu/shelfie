@@ -49,48 +49,94 @@ class _SearchAndFilterBarState extends ConsumerState<SearchAndFilterBar> {
     final contentTypeFilter = ref.watch(contentTypeFilterProvider);
     final tagsAsync = ref.watch(tagsProvider);
     
-    return Card(
-      margin: EdgeInsets.zero,
+    return Container(
+      margin: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: theme.colorScheme.primary.withOpacity(0.1),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: theme.colorScheme.primary.withOpacity(0.08),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         child: Column(
           children: [
-            // Search bar
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _searchController,
-                    focusNode: _searchFocusNode,
-                    decoration: InputDecoration(
-                      hintText: 'Search titles, descriptions, domains...',
-                      prefixIcon: const Icon(Icons.search),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
+            // Enhanced search bar
+            Container(
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: theme.colorScheme.outline.withOpacity(0.1),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _searchController,
+                      focusNode: _searchFocusNode,
+                      decoration: InputDecoration(
+                        hintText: 'Search titles, descriptions, domains...',
+                        hintStyle: TextStyle(
+                          color: theme.colorScheme.onSurface.withOpacity(0.5),
+                        ),
+                        prefixIcon: Icon(
+                          Icons.search_rounded,
+                          color: theme.colorScheme.primary,
+                        ),
+                        border: InputBorder.none,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                        suffixIcon: _searchController.text.isNotEmpty
+                            ? IconButton(
+                                icon: Icon(
+                                  Icons.clear_rounded,
+                                  color: theme.colorScheme.onSurface.withOpacity(0.6),
+                                ),
+                                onPressed: () {
+                                  _searchController.clear();
+                                  ref.read(searchQueryProvider.notifier).state = '';
+                                },
+                              )
+                            : null,
                       ),
-                      isDense: true,
-                      suffixIcon: _searchController.text.isNotEmpty
-                          ? IconButton(
-                              icon: const Icon(Icons.clear),
-                              onPressed: () {
-                                _searchController.clear();
-                                ref.read(searchQueryProvider.notifier).state = '';
-                              },
-                            )
-                          : null,
                     ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                IconButton(
-                  icon: Icon(
-                    Icons.tune,
-                    color: _hasActiveFilters() ? theme.colorScheme.primary : null,
+                  Container(
+                    margin: const EdgeInsets.only(right: 8),
+                    decoration: BoxDecoration(
+                      color: _hasActiveFilters() 
+                          ? theme.colorScheme.primary.withOpacity(0.1)
+                          : theme.colorScheme.surfaceContainerHighest.withOpacity(0.5),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: _hasActiveFilters() 
+                            ? theme.colorScheme.primary.withOpacity(0.3)
+                            : theme.colorScheme.outline.withOpacity(0.1),
+                      ),
+                    ),
+                    child: IconButton(
+                      icon: Icon(
+                        Icons.tune_rounded,
+                        color: _hasActiveFilters() 
+                            ? theme.colorScheme.primary 
+                            : theme.colorScheme.onSurface.withOpacity(0.6),
+                      ),
+                      onPressed: () => setState(() => _isFiltersExpanded = !_isFiltersExpanded),
+                      tooltip: 'Filters',
+                    ),
                   ),
-                  onPressed: () => setState(() => _isFiltersExpanded = !_isFiltersExpanded),
-                  tooltip: 'Filters',
-                ),
-              ],
+                ],
+              ),
             ),
             
             // Active filters summary

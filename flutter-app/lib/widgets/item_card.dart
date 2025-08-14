@@ -149,47 +149,85 @@ class ItemCard extends ConsumerWidget {
               Row(
                 children: [
                   // Complete/Uncomplete button
-                  if (!isArchive)
-                    TextButton.icon(
-                      onPressed: () => _markAsCompleted(context, ref),
-                      icon: const Icon(Icons.check_circle, size: 18),
-                      label: Text(item.isVideo ? 'Mark as Watched' : 'Mark as Read'),
-                      style: TextButton.styleFrom(
-                        foregroundColor: theme.colorScheme.primary,
-                      ),
-                    )
-                  else
-                    TextButton.icon(
-                      onPressed: () => _markAsUnread(context, ref),
-                      icon: const Icon(Icons.undo, size: 18),
-                      label: const Text('Restore'),
-                      style: TextButton.styleFrom(
-                        foregroundColor: theme.colorScheme.secondary,
-                      ),
-                    ),
+                  Expanded(
+                    child: !isArchive
+                        ? ElevatedButton.icon(
+                            onPressed: () => _markAsCompleted(context, ref),
+                            icon: const Icon(Icons.check_circle, size: 18),
+                            label: Text(item.isVideo ? 'Watched' : 'Read'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: theme.colorScheme.primary,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                          )
+                        : ElevatedButton.icon(
+                            onPressed: () => _markAsUnread(context, ref),
+                            icon: const Icon(Icons.undo, size: 18),
+                            label: const Text('Restore'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: theme.colorScheme.secondary,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                          ),
+                  ),
                   
-                  const Spacer(),
+                  const SizedBox(width: 12),
                   
                   // Open button
-                  TextButton.icon(
-                    onPressed: () => _openUrl(item.url, context),
-                    icon: const Icon(Icons.open_in_new, size: 18),
-                    label: const Text('Open'),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () => _openUrl(item.url, context),
+                      icon: const Icon(Icons.open_in_new, size: 18),
+                      label: const Text('Open'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: theme.colorScheme.primary,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        side: BorderSide(color: theme.colorScheme.primary),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
                   ),
+                  
+                  const SizedBox(width: 12),
                   
                   // Tag management button
-                  IconButton(
-                    onPressed: () => _showTagSelector(context, ref),
-                    icon: const Icon(Icons.label_outline),
-                    tooltip: 'Manage Tags',
+                  Container(
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surface,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: theme.colorScheme.outline.withOpacity(0.2)),
+                    ),
+                    child: IconButton(
+                      onPressed: () => _showTagSelector(context, ref),
+                      icon: Icon(Icons.label_outline, color: theme.colorScheme.primary),
+                      tooltip: 'Manage Tags',
+                    ),
                   ),
                   
+                  const SizedBox(width: 8),
+                  
                   // Delete button
-                  IconButton(
-                    onPressed: () => _showDeleteConfirmation(context, ref),
-                    icon: const Icon(Icons.delete_outline),
-                    tooltip: 'Delete',
-                    color: theme.colorScheme.error,
+                  Container(
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.errorContainer.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: theme.colorScheme.error.withOpacity(0.2)),
+                    ),
+                    child: IconButton(
+                      onPressed: () => _showDeleteConfirmation(context, ref),
+                      icon: Icon(Icons.delete_outline, color: theme.colorScheme.error),
+                      tooltip: 'Delete',
+                    ),
                   ),
                 ],
               ),
