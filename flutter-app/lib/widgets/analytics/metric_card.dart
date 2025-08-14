@@ -18,10 +18,12 @@ class MetricCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = MediaQuery.of(context).size.width < 600;
+    
     return Card(
       elevation: 2,
       child: Padding(
-        padding: const EdgeInsets.all(12.0), // Reduced from 16.0
+        padding: EdgeInsets.all(isMobile ? 16.0 : 12.0), // More padding on mobile
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -30,38 +32,42 @@ class MetricCard extends StatelessWidget {
                 Icon(
                   icon,
                   color: color,
-                  size: 20, // Reduced from 24
+                  size: isMobile ? 24 : 20, // Larger icon on mobile
                 ),
-                const SizedBox(width: 6), // Reduced from 8
+                const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     title,
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
                       fontWeight: FontWeight.w500,
-                      fontSize: 12, // Made smaller
+                      fontSize: isMobile ? 14 : 12, // Larger text on mobile
                     ),
                     overflow: TextOverflow.ellipsis,
+                    maxLines: 2, // Allow 2 lines for title on mobile
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 8), // Reduced from 12
+            SizedBox(height: isMobile ? 12 : 8), // More spacing on mobile
             Text(
               value,
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith( // Changed from headlineMedium
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                 fontWeight: FontWeight.bold,
                 color: color,
+                fontSize: isMobile ? 20 : 18, // Responsive font size
               ),
             ),
-            const SizedBox(height: 2), // Reduced from 4
-            Text(
-              subtitle,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Colors.grey.shade600,
-                fontSize: 11, // Made smaller
+            SizedBox(height: isMobile ? 6 : 4), // More spacing on mobile
+            Expanded(
+              child: Text(
+                subtitle,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Colors.grey.shade600,
+                  fontSize: isMobile ? 12 : 11, // Larger text on mobile
+                ),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 3, // Allow more lines for subtitle on mobile
               ),
-              overflow: TextOverflow.ellipsis,
-              maxLines: 2,
             ),
           ],
         ),

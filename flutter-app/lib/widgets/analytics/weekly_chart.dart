@@ -10,11 +10,12 @@ class WeeklyChart extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final weeklyData = ref.watch(weeklyCompletionsProvider);
     final maxCompletions = ref.watch(maxWeeklyCompletionsProvider);
+    final isMobile = MediaQuery.of(context).size.width < 600;
 
     if (weeklyData.isEmpty) {
       return Card(
         child: Container(
-          height: 180, // Reduced from 250
+          height: isMobile ? 200 : 180, // Taller on mobile
           padding: const EdgeInsets.all(16.0),
           child: const Center(
             child: Text('No weekly data available'),
@@ -35,9 +36,9 @@ class WeeklyChart extends ConsumerWidget {
                 fontWeight: FontWeight.bold,
               ),
             ),
-            const SizedBox(height: 12), // Reduced from 16
+            SizedBox(height: isMobile ? 16 : 12), // More spacing on mobile
             SizedBox(
-              height: 150, // Reduced from 200
+              height: isMobile ? 180 : 150, // Taller chart on mobile
               child: BarChart(
                 BarChartData(
                   alignment: BarChartAlignment.spaceAround,

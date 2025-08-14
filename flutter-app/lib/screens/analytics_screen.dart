@@ -278,13 +278,17 @@ class AnalyticsScreen extends ConsumerWidget {
   }
 
   Widget _buildMetricsGrid(BuildContext context, AnalyticsMetrics metrics) {
+    // Responsive design based on screen width
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isMobile = screenWidth < 600;
+    
     return GridView.count(
-      crossAxisCount: 4, // Changed from 2 to 4 for more compact layout
+      crossAxisCount: isMobile ? 2 : 4, // 2 columns on mobile, 4 on larger screens
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      childAspectRatio: 1.2, // Reduced from 1.5 to make cards less tall
-      mainAxisSpacing: 12, // Reduced from 16
-      crossAxisSpacing: 12, // Reduced from 16
+      childAspectRatio: isMobile ? 1.1 : 1.2, // Slightly taller on mobile for better text display
+      mainAxisSpacing: isMobile ? 16 : 12,
+      crossAxisSpacing: isMobile ? 16 : 12,
       children: [
         MetricCard(
           title: 'Pending Items',
