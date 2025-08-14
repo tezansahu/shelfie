@@ -5,6 +5,7 @@ import '../providers/items_provider.dart';
 import '../widgets/item_card.dart';
 import '../widgets/add_item_dialog.dart';
 import '../widgets/search_filter_bar.dart';
+import 'analytics_screen.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -20,7 +21,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
   }
 
   @override
@@ -43,6 +44,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             Tab(icon: Icon(Icons.article), text: 'Reading'),
             Tab(icon: Icon(Icons.video_library), text: 'Viewing'),
             Tab(icon: Icon(Icons.archive), text: 'Archive'),
+            Tab(icon: Icon(Icons.analytics), text: 'Analytics'),
           ],
         ),
         actions: [
@@ -82,6 +84,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             emptyIcon: Icons.archive,
             isArchive: true,
           ),
+          // Analytics Tab
+          const AnalyticsScreen(),
         ],
       ),
     );
