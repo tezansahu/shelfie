@@ -1,4 +1,4 @@
-package com.shelfie.shelfie_app
+package com.shelfie.shelfie
 
 import io.flutter.embedding.android.FlutterActivity
 

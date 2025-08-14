@@ -1,4 +1,4 @@
-# shelfie_app
+# shelfie
 
 A new Flutter project.
 
