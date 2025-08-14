@@ -1,7 +1,6 @@
 // Popup script for Shelfie extension
 document.addEventListener('DOMContentLoaded', async () => {
   const saveCurrentBtn = document.getElementById('save-current');
-  const openShelfieBtn = document.getElementById('open-shelfie');
   const statusReady = document.getElementById('status-ready');
   const statusNotConfigured = document.getElementById('status-not-configured');
 
@@ -10,7 +9,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Event listeners
   saveCurrentBtn.addEventListener('click', saveCurrentPage);
-  openShelfieBtn.addEventListener('click', openShelfieApp);
 
   async function checkStatus() {
     try {
@@ -67,13 +65,5 @@ document.addEventListener('DOMContentLoaded', async () => {
         saveCurrentBtn.disabled = false;
       }, 2000);
     }
-  }
-
-  async function openShelfieApp() {
-    // This would open the Flutter app if it's running
-    // For now, we'll show a message about opening the app
-    chrome.tabs.create({
-      url: 'chrome://apps/'
-    });
   }
 });
