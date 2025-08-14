@@ -1,5 +1,7 @@
+import 'dart:convert';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/item.dart';
+import '../models/tag.dart';
 
 class SupabaseService {
   static SupabaseService? _instance;
@@ -47,6 +49,55 @@ class ItemsService {
     };
   }
 
+  // Convert database data with tags to model format
+  Map<String, dynamic> _convertToModelFormatWithTags(Map<String, dynamic> dbData) {
+    final baseData = _convertToModelFormat(dbData);
+    
+    // Handle tags field from the view
+    final tagsJson = dbData['tags'];
+    List<Map<String, dynamic>> tags = [];
+    
+    if (tagsJson != null) {
+      if (tagsJson is List) {
+        tags = tagsJson.map((tag) {
+          final tagMap = Map<String, dynamic>.from(tag as Map);
+          // Ensure all required fields are present for Tag.fromJson()
+          return {
+            'id': tagMap['id']?.toString() ?? '',
+            'name': tagMap['name']?.toString() ?? '',
+            'type': tagMap['type']?.toString() ?? 'custom',
+            'usageCount': tagMap['usage_count'] ?? 0,
+            'createdAt': DateTime.now().toIso8601String(),
+            'updatedAt': DateTime.now().toIso8601String(),
+          };
+        }).toList();
+      } else if (tagsJson is String) {
+        // Parse JSON string if needed
+        try {
+          final decoded = json.decode(tagsJson);
+          if (decoded is List) {
+            tags = decoded.map((tag) {
+              final tagMap = Map<String, dynamic>.from(tag as Map);
+              return {
+                'id': tagMap['id']?.toString() ?? '',
+                'name': tagMap['name']?.toString() ?? '',
+                'type': tagMap['type']?.toString() ?? 'custom',
+                'usageCount': tagMap['usage_count'] ?? 0,
+                'createdAt': DateTime.now().toIso8601String(),
+                'updatedAt': DateTime.now().toIso8601String(),
+              };
+            }).toList();
+          }
+        } catch (e) {
+          print('❌ Error parsing tags JSON: $e');
+        }
+      }
+    }
+    
+    baseData['tags'] = tags;
+    return baseData;
+  }
+
   // Get unread items (Reading + Viewing lists)
   Future<List<Item>> getUnreadItems({
     ContentType? contentType,
@@ -54,10 +105,10 @@ class ItemsService {
     int offset = 0,
   }) async {
     try {
+      // Use the view that includes tags
       var query = _client
-          .from('items')
-          .select()
-          .eq('status', 'unread');
+          .from('unread_items_with_tags_v')
+          .select();
 
       if (contentType != null) {
         query = query.eq('content_type', contentType.value);
@@ -73,7 +124,8 @@ class ItemsService {
       if (response is List) {
         return response.map((json) {
           print('📱 Processing item: $json');
-          final convertedJson = _convertToModelFormat(json as Map<String, dynamic>);
+          final itemData = Map<String, dynamic>.from(json as Map);
+          final convertedJson = _convertToModelFormatWithTags(itemData);
           print('📱 Converted item: $convertedJson');
           return Item.fromJson(convertedJson);
         }).toList();
@@ -94,15 +146,16 @@ class ItemsService {
     int offset = 0,
   }) async {
     try {
+      // Use the view that includes tags
       final response = await _client
-          .from('items')
+          .from('archive_items_with_tags_v')
           .select()
-          .eq('status', 'completed')
           .order('finished_at', ascending: false)
           .range(offset, offset + limit - 1);
 
       return response.map((json) {
-        final convertedJson = _convertToModelFormat(json);
+        final itemData = Map<String, dynamic>.from(json as Map);
+        final convertedJson = _convertToModelFormatWithTags(itemData);
         return Item.fromJson(convertedJson);
       }).toList();
     } catch (error) {
@@ -163,10 +216,12 @@ class ItemsService {
         throw Exception('Failed to add item - no data returned');
       }
 
-      final rawData = response.data as Map<String, dynamic>;
-      print('📱 Raw response data: $rawData');
+      // Handle dynamic map properly
+      final rawData = response.data as Map<dynamic, dynamic>;
+      final data = Map<String, dynamic>.from(rawData);
+      print('📱 Raw response data: $data');
       
-      final convertedJson = _convertToModelFormat(rawData);
+      final convertedJson = _convertToModelFormat(data);
       print('📱 Converted JSON: $convertedJson');
       
       final item = Item.fromJson(convertedJson);
@@ -210,6 +265,177 @@ class ItemsService {
       return 'web';
     } catch (e) {
       return 'unknown';
+    }
+  }
+
+  // PHASE 2: Tags and Search Methods
+
+  // Get all tags (preset + custom)
+  Future<List<Tag>> getAllTags() async {
+    try {
+      print('🏷️ Calling get_all_tags...');
+      // Call without user_id to get all preset tags and global tags
+      final response = await _client.rpc('get_all_tags');
+      
+      print('🏷️ Raw response: $response');
+      print('🏷️ Response type: ${response.runtimeType}');
+      
+      if (response != null) {
+        return (response as List).map((json) {
+          print('🏷️ Processing tag: $json');
+          print('🏷️ Tag type: ${json.runtimeType}');
+          
+          // Handle potential null values safely
+          final jsonMap = Map<String, dynamic>.from(json as Map);
+          print('🏷️ Converted jsonMap: $jsonMap');
+          
+          // Convert the database response to the correct format for Tag.fromJson
+          final tagData = {
+            'id': jsonMap['id']?.toString() ?? '',
+            'name': jsonMap['name']?.toString() ?? '',
+            'type': jsonMap['type']?.toString() ?? 'custom', // This will be converted to TagType enum
+            'usageCount': jsonMap['usage_count'] ?? 0,
+            'createdAt': DateTime.now().toIso8601String(),
+            'updatedAt': DateTime.now().toIso8601String(),
+          };
+          
+          print('🏷️ Final tagData: $tagData');
+          return Tag.fromJson(tagData);
+        }).toList();
+      }
+      return [];
+    } catch (error) {
+      print('❌ Error in getAllTags: $error');
+      rethrow;
+    }
+  }
+
+  // Add tag to item
+  Future<String> addTagToItem(String itemId, String tagName) async {
+    try {
+      final response = await _client.rpc('add_tag_to_item', params: {
+        'item_id_param': itemId,
+        'tag_name_param': tagName,
+        // Note: Without user auth, this will create tags without user_id (global tags)
+      });
+      return response as String;
+    } catch (error) {
+      print('❌ Error in addTagToItem: $error');
+      rethrow;
+    }
+  }
+
+  // Remove tag from item
+  Future<bool> removeTagFromItem(String itemId, String tagId) async {
+    try {
+      final response = await _client.rpc('remove_tag_from_item', params: {
+        'item_id_param': itemId,
+        'tag_id_param': tagId,
+      });
+      return response as bool;
+    } catch (error) {
+      print('❌ Error in removeTagFromItem: $error');
+      rethrow;
+    }
+  }
+
+  // Search items with filters
+  Future<List<Item>> searchItems({
+    String searchQuery = '',
+    List<String> tagNames = const [],
+    ContentType? contentType,
+    ItemStatus? status,
+    int limit = 30,
+    int offset = 0,
+  }) async {
+    try {
+      final response = await _client.rpc('search_items', params: {
+        'search_query': searchQuery,
+        'tag_names': tagNames,
+        'content_type_filter': contentType?.value,
+        'status_filter': status?.value ?? 'unread',
+        'limit_count': limit,
+        'offset_count': offset,
+      });
+
+      print('🔍 Search response: $response');
+      print('🔍 Response type: ${response.runtimeType}');
+
+      if (response != null && response is List) {
+        return response.map((json) {
+          print('🔍 Processing search result: ${json.runtimeType}');
+          
+          // Convert to proper map type
+          final itemData = Map<String, dynamic>.from(json as Map);
+          final convertedJson = _convertToModelFormatWithTags(itemData);
+          
+          return Item.fromJson(convertedJson);
+        }).toList();
+      }
+      return [];
+    } catch (error) {
+      print('❌ Error in searchItems: $error');
+      rethrow;
+    }
+  }
+
+  // Add item manually using Edge Function
+  Future<Item> addItemManual(String url) async {
+    try {
+      print('📝 Adding item manually: $url');
+      
+      final response = await _client.functions.invoke(
+        'add-item-manual',
+        body: {'url': url},
+      );
+
+      if (response.data != null) {
+        print('✅ Manual add response: ${response.data}');
+        print('✅ Response data type: ${response.data.runtimeType}');
+        
+        // Convert response to Item format - handle dynamic map properly
+        final rawData = response.data;
+        print('🔍 rawData type: ${rawData.runtimeType}');
+        
+        final data = Map<String, dynamic>.from(rawData as Map);
+        print('🔍 converted data: $data');
+        
+        final itemData = {
+          'id': data['id'],
+          'user_id': null, // Add this field that's expected by _convertToModelFormat
+          'url': url,
+          'canonical_url': url, // Add this field
+          'domain': data['domain'],
+          'title': data['title'],
+          'description': data['description'],
+          'image_url': data['image_url'],
+          'content_type': data['content_type'],
+          'status': data['status'],
+          'added_at': data['added_at'],
+          'finished_at': null, // Add this field
+          'source_client': 'app_manual',
+          'source_platform': 'flutter_app',
+          'notes': null, // Add this field
+          'metadata': <String, dynamic>{}, // Ensure this is the right type
+          'created_at': data['added_at'],
+          'updated_at': data['added_at'],
+        };
+
+        print('🔍 itemData: $itemData');
+        
+        final convertedJson = _convertToModelFormat(itemData);
+        print('🔍 convertedJson: $convertedJson');
+        
+        // Add tags field for the Item model
+        convertedJson['tags'] = <Map<String, dynamic>>[];
+        
+        return Item.fromJson(convertedJson);
+      }
+      
+      throw Exception('No response data received');
+    } catch (error) {
+      print('❌ Error in addItemManual: $error');
+      rethrow;
     }
   }
 }

@@ -1,4 +1,5 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
+import 'tag.dart';
 
 part 'item.freezed.dart';
 part 'item.g.dart';
@@ -24,6 +25,7 @@ class Item with _$Item {
     @JsonKey(name: 'metadata') Map<String, dynamic>? rawMetadata,
     required DateTime createdAt,
     required DateTime updatedAt,
+    @Default([]) List<Tag> tags,
   }) = _Item;
 
   factory Item.fromJson(Map<String, dynamic> json) => _$ItemFromJson(json);

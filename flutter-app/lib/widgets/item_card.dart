@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import '../models/item.dart';
 import '../providers/items_provider.dart';
+import 'tag_widgets.dart';
 
 class ItemCard extends ConsumerWidget {
   final Item item;
@@ -128,6 +129,20 @@ class ItemCard extends ConsumerWidget {
                 ),
               ],
               
+              // Tags (if available)
+              if (item.tags.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 4,
+                  children: item.tags.map((tag) => TagChip(
+                    tag: tag,
+                    onTap: () => _onTagTapped(context, ref, tag),
+                    showUsageCount: false,
+                  )).toList(),
+                ),
+              ],
+              
               // Actions
               const SizedBox(height: 12),
               Row(
@@ -137,7 +152,7 @@ class ItemCard extends ConsumerWidget {
                     TextButton.icon(
                       onPressed: () => _markAsCompleted(context, ref),
                       icon: const Icon(Icons.check_circle, size: 18),
-                      label: Text(item.isVideo ? 'Watched' : 'Read'),
+                      label: Text(item.isVideo ? 'Mark as Watched' : 'Mark as Read'),
                       style: TextButton.styleFrom(
                         foregroundColor: theme.colorScheme.primary,
                       ),
@@ -159,6 +174,13 @@ class ItemCard extends ConsumerWidget {
                     onPressed: () => _openUrl(item.url),
                     icon: const Icon(Icons.open_in_new, size: 18),
                     label: const Text('Open'),
+                  ),
+                  
+                  // Tag management button
+                  IconButton(
+                    onPressed: () => _showTagSelector(context, ref),
+                    icon: const Icon(Icons.label_outline),
+                    tooltip: 'Manage Tags',
                   ),
                   
                   // Delete button
@@ -289,5 +311,42 @@ class ItemCard extends ConsumerWidget {
         );
       }
     }
+  }
+
+  void _onTagTapped(BuildContext context, WidgetRef ref, tag) {
+    // Add tag to search filters
+    final currentTags = ref.read(selectedTagsProvider);
+    if (!currentTags.contains(tag.id)) {
+      ref.read(selectedTagsProvider.notifier).state = [...currentTags, tag.id];
+    }
+  }
+
+  void _showTagSelector(BuildContext context, WidgetRef ref) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Manage Tags - ${item.displayTitle}'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: TagSelector(
+            itemId: item.id,
+            currentTags: item.tags,
+            onTagsChanged: () {
+              Navigator.of(context).pop();
+              // Refresh the items to show updated tags
+              ref.invalidate(unreadArticlesProvider);
+              ref.invalidate(unreadVideosProvider);
+              ref.invalidate(archivedItemsProvider);
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+        ],
+      ),
+    );
   }
 }
