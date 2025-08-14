@@ -1,19 +1,20 @@
 # Shelfie - Personal Read & Watch Later System
 
-## Current Status: Phase 2 Complete! 🎉
+## Current Status: Phase 3 Complete! 🎉
 
 **Phase 1** (MVP Save & Consume) ✅ Complete  
 **Phase 2** (Tags, Search, Filters) ✅ Complete  
-**Phase 3** (Analytics) - Next up  
+**Phase 3** (Analytics) ✅ Complete  
 
-## ✅ What's Included (Phases 1 & 2)
+## ✅ What's Included (Phases 1-3)
 
 ### 🗄️ Database (Supabase)
-- Complete PostgreSQL schema with items, users, tags, and item_tags tables
+- Complete PostgreSQL schema with items, users, tags, item_tags, and events tables
 - Advanced search functions with full-text search (pg_trgm)
 - Preset tag seeding (17+ categories)
 - Triggers for automatic timestamp updates and status management
 - Views for efficient data access with tag aggregation
+- **Phase 3**: Events tracking and analytics_summary() RPC function
 
 ### 🔧 Backend (Supabase Edge Functions)
 - `save-url` - URL processing and metadata extraction (Phase 1)
@@ -22,6 +23,7 @@
 - YouTube video detection and thumbnail extraction
 - HTML metadata parsing with advanced heuristics
 - Deduplication and error handling
+- **Phase 3**: Automatic event logging for analytics
 
 ### 🌐 Browser Extension (Chrome/Edge)
 - Manifest V3 compatible with context menu integration
@@ -33,7 +35,7 @@
 ### 📱 Flutter App (Windows Desktop + Android)
 - **Phase 1 Features:**
   - Material 3 design with light/dark theme support
-  - Three main tabs: Reading, Viewing, Archive
+  - Four main tabs: Reading, Viewing, Archive, Analytics
   - Item cards with thumbnails, titles, and metadata
   - Mark as read/watched functionality
   - Manual URL addition and deletion
@@ -45,6 +47,14 @@
   - **Smart Filtering:** Auto content-type filtering per tab (Reading=Articles, Viewing=Videos)
   - **Tag Management:** Add/remove tags with usage counts and selector dialog
   - **Advanced UI:** Expandable filter interface with active filter indicators
+
+- **Phase 3 Features:**
+  - **Analytics Dashboard:** Comprehensive metrics and visual insights
+  - **Interactive Charts:** Weekly trends, tag analysis, domain stats, backlog distribution
+  - **Key Metrics:** Pending items, completion rates, time-to-complete, streak tracking
+  - **Date Range Selection:** Configurable analysis periods (7d to 1 year)
+  - **Real-time Updates:** Analytics refresh when items are modified
+  - **Visual Design:** Professional charts with fl_chart library
 
 ## 🚀 Getting Started
 
@@ -168,6 +178,23 @@
   - Add/remove tags from items with visual selector
   - Preset vs custom tag distinction with icons
   - Tag usage analytics and counts
+
+### Phase 3 - Analytics ✅
+- **Comprehensive Dashboard**: Visual metrics and insights into reading/viewing habits
+- **Key Metrics Tiles**:
+  - Pending items count (reading vs viewing breakdown)
+  - Recent completions (7-day and 30-day)
+  - Completion rate percentage
+  - Average and median time to complete
+  - Current streak tracking with motivation
+- **Interactive Charts**:
+  - Weekly completion trends (12-week bar chart)
+  - Top tags analysis (pie chart ≤5 tags, bar chart >5 tags)
+  - Domain completion rates (progress bars)
+  - Backlog age distribution (pie chart with legend)
+- **Date Range Selection**: Configurable analysis periods (7 days to 1 year)
+- **Automatic Event Tracking**: All item actions logged for historical analysis
+- **Real-time Updates**: Analytics refresh when items are modified
 - **Intelligent UX**:
   - Expandable filter interface with active filter indicators
   - Tab-specific auto-filtering (hidden from user on Reading/Viewing tabs)
