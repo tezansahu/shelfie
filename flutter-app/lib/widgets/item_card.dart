@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -24,7 +25,7 @@ class ItemCard extends ConsumerWidget {
     return Card(
       elevation: 2,
       child: InkWell(
-        onTap: () => _openUrl(item.url),
+        onTap: () => _openUrl(item.url, context),
         borderRadius: BorderRadius.circular(8),
         child: Padding(
           padding: const EdgeInsets.all(12),
@@ -171,7 +172,7 @@ class ItemCard extends ConsumerWidget {
                   
                   // Open button
                   TextButton.icon(
-                    onPressed: () => _openUrl(item.url),
+                    onPressed: () => _openUrl(item.url, context),
                     icon: const Icon(Icons.open_in_new, size: 18),
                     label: const Text('Open'),
                   ),
@@ -199,10 +200,77 @@ class ItemCard extends ConsumerWidget {
     );
   }
 
-  Future<void> _openUrl(String url) async {
-    final uri = Uri.parse(url);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
+  Future<void> _openUrl(String url, BuildContext context) async {
+    try {
+      print('🔗 Attempting to open URL: $url');
+      
+      // Validate and clean the URL
+      String cleanUrl = url.trim();
+      if (!cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://')) {
+        cleanUrl = 'https://$cleanUrl';
+      }
+      
+      final uri = Uri.parse(cleanUrl);
+      print('🔗 Parsed URI: $uri');
+      
+      // Check if URL can be launched
+      final canLaunch = await canLaunchUrl(uri);
+      print('🔗 Can launch URL: $canLaunch');
+      
+      if (canLaunch) {
+        // Try different launch modes for better compatibility
+        bool launched = false;
+        
+        // For YouTube URLs, try to open in YouTube app first
+        if (uri.host.contains('youtube.com') || uri.host.contains('youtu.be')) {
+          try {
+            await launchUrl(uri, mode: LaunchMode.externalApplication);
+            launched = true;
+            print('🎥 Opened YouTube URL in external app');
+          } catch (e) {
+            print('⚠️ Failed to open in YouTube app, trying browser: $e');
+          }
+        }
+        
+        // If not launched yet, try browser
+        if (!launched) {
+          await launchUrl(
+            uri,
+            mode: LaunchMode.externalApplication,
+            webViewConfiguration: const WebViewConfiguration(
+              enableJavaScript: true,
+              enableDomStorage: true,
+            ),
+          );
+          print('🌐 Opened URL in browser');
+        }
+      } else {
+        throw Exception('Cannot launch URL: $cleanUrl');
+      }
+    } catch (e) {
+      print('❌ Error opening URL: $e');
+      
+      // Show user-friendly error message
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Could not open link: ${e.toString()}'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+            action: SnackBarAction(
+              label: 'Copy URL',
+              textColor: Colors.white,
+              onPressed: () async {
+                await Clipboard.setData(ClipboardData(text: url));
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('URL copied to clipboard')),
+                  );
+                }
+              },
+            ),
+          ),
+        );
+      }
     }
   }
 
@@ -328,16 +396,19 @@ class ItemCard extends ConsumerWidget {
         title: Text('Manage Tags - ${item.displayTitle}'),
         content: SizedBox(
           width: double.maxFinite,
-          child: TagSelector(
-            itemId: item.id,
-            currentTags: item.tags,
-            onTagsChanged: () {
-              Navigator.of(context).pop();
-              // Refresh the items to show updated tags
-              ref.invalidate(unreadArticlesProvider);
-              ref.invalidate(unreadVideosProvider);
-              ref.invalidate(archivedItemsProvider);
-            },
+          height: MediaQuery.of(context).size.height * 0.6, // Limit height to 60% of screen
+          child: SingleChildScrollView( // Make content scrollable
+            child: TagSelector(
+              itemId: item.id,
+              currentTags: item.tags,
+              onTagsChanged: () {
+                Navigator.of(context).pop();
+                // Refresh the items to show updated tags
+                ref.invalidate(unreadArticlesProvider);
+                ref.invalidate(unreadVideosProvider);
+                ref.invalidate(archivedItemsProvider);
+              },
+            ),
           ),
         ),
         actions: [
