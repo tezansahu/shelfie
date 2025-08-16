@@ -155,4 +155,19 @@ class ItemActions {
     _ref.invalidate(tagsProvider);
     _ref.invalidate(searchResultsProvider);
   }
+
+  Future<Item> updateItem(String itemId, {String? title, String? description}) async {
+    final service = _ref.read(itemsServiceProvider);
+    final updated = await service.updateItem(itemId, title: title, description: description);
+
+    // Refresh providers that might be affected
+    _ref.invalidate(allUnreadItemsProvider);
+    _ref.invalidate(unreadArticlesProvider);
+    _ref.invalidate(unreadVideosProvider);
+    _ref.invalidate(archivedItemsProvider);
+    _ref.invalidate(tagsProvider);
+    _ref.invalidate(searchResultsProvider);
+
+    return updated;
+  }
 }

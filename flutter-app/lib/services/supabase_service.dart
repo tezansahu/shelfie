@@ -182,6 +182,31 @@ class ItemsService {
     }
   }
 
+  // Update item fields (title / description)
+  Future<Item> updateItem(String itemId, {String? title, String? description}) async {
+    try {
+      final updateMap = <String, dynamic>{
+        'updated_at': DateTime.now().toIso8601String(),
+      };
+
+      if (title != null) updateMap['title'] = title;
+      if (description != null) updateMap['description'] = description;
+
+      final response = await _client
+          .from('items')
+          .update(updateMap)
+          .eq('id', itemId)
+          .select()
+          .single();
+
+      final convertedJson = _convertToModelFormat(response);
+      return Item.fromJson(convertedJson);
+    } catch (error) {
+      print('❌ Error in updateItem: $error');
+      rethrow;
+    }
+  }
+
   // Delete item
   Future<void> deleteItem(String itemId) async {
     try {

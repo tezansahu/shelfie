@@ -7,6 +7,7 @@ import 'package:timeago/timeago.dart' as timeago;
 import '../models/item.dart';
 import '../providers/items_provider.dart';
 import 'tag_widgets.dart';
+import 'edit_item_dialog.dart';
 
 class ItemCard extends ConsumerWidget {
   final Item item;
@@ -144,92 +145,162 @@ class ItemCard extends ConsumerWidget {
                 ),
               ],
               
-              // Actions
+              // Actions: first row (Read/Restore + Open), second row (Edit, Manage Tags, Delete)
               const SizedBox(height: 12),
-              Row(
-                children: [
-                  // Complete/Uncomplete button
-                  Expanded(
-                    child: !isArchive
-                        ? ElevatedButton.icon(
-                            onPressed: () => _markAsCompleted(context, ref),
-                            icon: const Icon(Icons.check_circle, size: 18),
-                            label: Text(item.isVideo ? 'Watched' : 'Read'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: theme.colorScheme.primary,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                          )
-                        : ElevatedButton.icon(
-                            onPressed: () => _markAsUnread(context, ref),
-                            icon: const Icon(Icons.undo, size: 18),
-                            label: const Text('Restore'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: theme.colorScheme.secondary,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
+              // Use LayoutBuilder to show labels on wide viewports and icons-only on narrow
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final showLabels = constraints.maxWidth > 600; // adjust breakpoint as needed
+
+                  Widget buildSmallAction({
+                    required IconData icon,
+                    required String label,
+                    required VoidCallback onPressed,
+                    Color? iconColor,
+                    Color? bgColor,
+                    Color? borderColor,
+                  }) {
+                    return OutlinedButton(
+                      onPressed: onPressed,
+                      style: OutlinedButton.styleFrom(
+                        backgroundColor: bgColor ?? theme.colorScheme.surface,
+                        foregroundColor: iconColor ?? theme.colorScheme.primary,
+                        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+                        side: BorderSide(color: borderColor ?? theme.colorScheme.outline.withOpacity(0.2)),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        minimumSize: const Size(double.infinity, 44),
+                        // Ensure button takes available width when used inside Expanded
+                      ),
+                      child: showLabels
+                          ? Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              mainAxisSize: MainAxisSize.max,
+                              children: [
+                                Icon(icon, color: iconColor ?? theme.colorScheme.primary, size: 18),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    label,
+                                    textAlign: TextAlign.center,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            )
+                          : Icon(icon, color: iconColor ?? theme.colorScheme.primary),
+                    );
+                  }
+
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // First row:
+                      Row(
+                        children: [
+                          // Open button (left)
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: () => _openUrl(item.url, context),
+                              icon: const Icon(Icons.open_in_new, size: 18),
+                              label: const Text('Open'),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: theme.colorScheme.primary,
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                side: BorderSide(color: theme.colorScheme.primary),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                minimumSize: const Size.fromHeight(44),
                               ),
                             ),
                           ),
-                  ),
-                  
-                  const SizedBox(width: 12),
-                  
-                  // Open button
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () => _openUrl(item.url, context),
-                      icon: const Icon(Icons.open_in_new, size: 18),
-                      label: const Text('Open'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: theme.colorScheme.primary,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        side: BorderSide(color: theme.colorScheme.primary),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
+
+                          const SizedBox(width: 12),
+
+                          // Read / Restore button (right)
+                          Expanded(
+                            child: !isArchive
+                                ? ElevatedButton.icon(
+                                    onPressed: () => _markAsCompleted(context, ref),
+                                    icon: const Icon(Icons.check_circle, size: 18),
+                                    label: Text(item.isVideo ? 'Watched' : 'Read'),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: theme.colorScheme.primary,
+                                      foregroundColor: Colors.white,
+                                      padding: const EdgeInsets.symmetric(vertical: 12),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      minimumSize: const Size.fromHeight(44),
+                                    ),
+                                  )
+                                : ElevatedButton.icon(
+                                    onPressed: () => _markAsUnread(context, ref),
+                                    icon: const Icon(Icons.undo, size: 18),
+                                    label: const Text('Restore'),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: theme.colorScheme.secondary,
+                                      foregroundColor: Colors.white,
+                                      padding: const EdgeInsets.symmetric(vertical: 12),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      minimumSize: const Size.fromHeight(44),
+                                    ),
+                                  ),
+                          ),
+                        ],
                       ),
-                    ),
-                  ),
-                  
-                  const SizedBox(width: 12),
-                  
-                  // Tag management button
-                  Container(
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.surface,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: theme.colorScheme.outline.withOpacity(0.2)),
-                    ),
-                    child: IconButton(
-                      onPressed: () => _showTagSelector(context, ref),
-                      icon: Icon(Icons.label_outline, color: theme.colorScheme.primary),
-                      tooltip: 'Manage Tags',
-                    ),
-                  ),
-                  
-                  const SizedBox(width: 8),
-                  
-                  // Delete button
-                  Container(
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.errorContainer.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: theme.colorScheme.error.withOpacity(0.2)),
-                    ),
-                    child: IconButton(
-                      onPressed: () => _showDeleteConfirmation(context, ref),
-                      icon: Icon(Icons.delete_outline, color: theme.colorScheme.error),
-                      tooltip: 'Delete',
-                    ),
-                  ),
-                ],
+
+                      const SizedBox(height: 8),
+
+                      // Second row: evenly distributed small actions (Edit, Manage Tags, Delete)
+                      Row(
+                        children: [
+                          Expanded(
+                            child: buildSmallAction(
+                              icon: Icons.edit_outlined,
+                              label: 'Edit',
+                              onPressed: () => showDialog(
+                                context: context,
+                                builder: (context) => EditItemDialog(item: item),
+                              ),
+                              iconColor: theme.colorScheme.primary,
+                              bgColor: theme.colorScheme.surface,
+                              borderColor: theme.colorScheme.outline.withOpacity(0.2),
+                            ),
+                          ),
+
+                          const SizedBox(width: 8),
+
+                          Expanded(
+                            child: buildSmallAction(
+                              icon: Icons.label_outline,
+                              label: 'Manage Tags',
+                              onPressed: () => _showTagSelector(context, ref),
+                              iconColor: theme.colorScheme.primary,
+                              bgColor: theme.colorScheme.surface,
+                              borderColor: theme.colorScheme.outline.withOpacity(0.2),
+                            ),
+                          ),
+
+                          const SizedBox(width: 8),
+
+                          Expanded(
+                            child: buildSmallAction(
+                              icon: Icons.delete_outline,
+                              label: 'Delete',
+                              onPressed: () => _showDeleteConfirmation(context, ref),
+                              iconColor: theme.colorScheme.error,
+                              bgColor: theme.colorScheme.errorContainer.withOpacity(0.1),
+                              borderColor: theme.colorScheme.error.withOpacity(0.2),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  );
+                },
               ),
             ],
           ),
