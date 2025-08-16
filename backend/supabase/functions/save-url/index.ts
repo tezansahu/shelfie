@@ -78,9 +78,10 @@ function parseMeta(html: string): MetaData {
   
   meta.image_url = ogImageMatch?.[1] || twitterImageMatch?.[1] || undefined;
   
-  // Extract canonical URL
+  // Extract canonical URL (ignore literal 'undefined' which sometimes appears due to bad templates)
   const canonicalMatch = html.match(/<link[^>]*rel="canonical"[^>]*href="([^"]+)"/i);
-  meta.canonical_url = canonicalMatch?.[1] || undefined;
+  const canonicalFound = canonicalMatch?.[1];
+  meta.canonical_url = (canonicalFound && canonicalFound !== 'undefined') ? canonicalFound : undefined;
   
   // Store raw data for debugging
   meta.raw = {
@@ -188,11 +189,11 @@ serve(async (req) => {
     // Parse basic metadata
     const meta = parseMeta(html);
     
-    // Initialize content variables
-    let content_type = 'article';
-    let image_url = meta.image_url;
-    let title = meta.title;
-    let description = meta.description;
+  // Initialize content variables
+  let content_type = 'article';
+  let image_url: string | null = meta.image_url ?? null;
+  let title = meta.title;
+  let description: string | null = meta.description ?? null;
 
     // Special handling for YouTube
     const youtubeId = extractYouTubeId(parsedUrl);
@@ -221,9 +222,14 @@ serve(async (req) => {
       }
     }
 
-    // Resolve canonical URL
-    let canonical_url = null;
-    if (meta.canonical_url) {
+  // Resolve canonical URL
+  let canonical_url: string | null = null;
+    // If this is a YouTube video, build a stable canonical using the video id.
+    // This avoids cases where pages or parsers accidentally yield the string "undefined"
+    // which would resolve to e.g. https://www.youtube.com/undefined.
+    if (youtubeId) {
+      canonical_url = `https://www.youtube.com/watch?v=${youtubeId}`;
+    } else if (meta.canonical_url && meta.canonical_url !== 'undefined') {
       try {
         canonical_url = new URL(meta.canonical_url, url).toString();
       } catch (error) {

@@ -174,7 +174,8 @@ function extractImageUrl(html: string, baseUrl: string): string | null {
 
 function extractCanonicalUrl(html: string, fallbackUrl: string): string {
   const match = html.match(/<link[^>]+rel=["']canonical["'][^>]+href=["']([^"']+)["']/i);
-  return match ? match[1] : fallbackUrl;
+  const found = match ? match[1] : null;
+  return (found && found !== 'undefined') ? found : fallbackUrl;
 }
 
 function resolveUrl(url: string, baseUrl: string): string {
