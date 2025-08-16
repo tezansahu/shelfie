@@ -81,38 +81,108 @@ class ItemCard extends ConsumerWidget {
                         ),
                         const SizedBox(height: 4),
                         
-                        // Domain and date
-                        Row(
-                          children: [
-                            Icon(
-                              item.isVideo ? Icons.play_circle : Icons.article,
-                              size: 16,
-                              color: theme.colorScheme.outline,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              item.domain,
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: theme.colorScheme.outline,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              '•',
-                              style: TextStyle(
-                                color: theme.colorScheme.outline,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              isArchive && item.finishedAt != null
-                                  ? timeago.format(item.finishedAt!)
-                                  : timeago.format(item.addedAt),
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: theme.colorScheme.outline,
-                              ),
-                            ),
-                          ],
+                        // Responsive: show domain + date on one line for wide cards, otherwise stack
+                        LayoutBuilder(
+                          builder: (context, constraints) {
+                            final singleLine = constraints.maxWidth > 420;
+
+                            if (singleLine) {
+                              // Render domain and time on same row
+                              return Row(
+                                children: [
+                                  Icon(
+                                    Icons.language,
+                                    size: 16,
+                                    color: theme.colorScheme.outline,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Expanded(
+                                    child: Text(
+                                      item.domain,
+                                      style: theme.textTheme.bodySmall?.copyWith(
+                                        color: theme.colorScheme.outline,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Icon(
+                                    Icons.access_time,
+                                    size: 14,
+                                    color: theme.colorScheme.outline,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  ConstrainedBox(
+                                    constraints: const BoxConstraints(maxWidth: 120),
+                                    child: Text(
+                                      isArchive && item.finishedAt != null
+                                          ? timeago.format(item.finishedAt!)
+                                          : timeago.format(item.addedAt),
+                                      style: theme.textTheme.bodySmall?.copyWith(
+                                        color: theme.colorScheme.outline,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      textAlign: TextAlign.right,
+                                    ),
+                                  ),
+                                ],
+                              );
+                            }
+
+                            // Stacked layout for narrow cards
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Icon(
+                                      Icons.language,
+                                      size: 16,
+                                      color: theme.colorScheme.outline,
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Expanded(
+                                      child: Text(
+                                        item.domain,
+                                        style: theme.textTheme.bodySmall?.copyWith(
+                                          color: theme.colorScheme.outline,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+
+                                const SizedBox(height: 4),
+
+                                Row(
+                                  children: [
+                                    Icon(
+                                      Icons.access_time,
+                                      size: 14,
+                                      color: theme.colorScheme.outline,
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Expanded(
+                                      child: Text(
+                                        isArchive && item.finishedAt != null
+                                            ? timeago.format(item.finishedAt!)
+                                            : timeago.format(item.addedAt),
+                                        style: theme.textTheme.bodySmall?.copyWith(
+                                          color: theme.colorScheme.outline,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            );
+                          },
                         ),
                       ],
                     ),

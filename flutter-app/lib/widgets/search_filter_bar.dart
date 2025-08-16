@@ -111,6 +111,7 @@ class _SearchAndFilterBarState extends ConsumerState<SearchAndFilterBar> {
                       ),
                     ),
                   ),
+                  const SizedBox(width: 8),
                   Container(
                     margin: const EdgeInsets.only(right: 8),
                     decoration: BoxDecoration(
