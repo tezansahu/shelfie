@@ -267,16 +267,16 @@ class ItemCard extends ConsumerWidget {
                       // First row:
                       Row(
                         children: [
-                          // Open button (left)
+                          // Open button (left) - primary styled
                           Expanded(
-                            child: OutlinedButton.icon(
+                            child: ElevatedButton.icon(
                               onPressed: () => _openUrl(item.url, context),
                               icon: const Icon(Icons.open_in_new, size: 18),
                               label: const Text('Open'),
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: theme.colorScheme.primary,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: theme.colorScheme.primary,
+                                foregroundColor: Colors.white,
                                 padding: const EdgeInsets.symmetric(vertical: 12),
-                                side: BorderSide(color: theme.colorScheme.primary),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12),
                                 ),
@@ -287,31 +287,31 @@ class ItemCard extends ConsumerWidget {
 
                           const SizedBox(width: 12),
 
-                          // Read / Restore button (right)
+                          // Read / Restore button (right) - outlined style
                           Expanded(
                             child: !isArchive
-                                ? ElevatedButton.icon(
+                                ? OutlinedButton.icon(
                                     onPressed: () => _markAsCompleted(context, ref),
                                     icon: const Icon(Icons.check_circle, size: 18),
                                     label: Text(item.isVideo ? 'Watched' : 'Read'),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: theme.colorScheme.primary,
-                                      foregroundColor: Colors.white,
+                                    style: OutlinedButton.styleFrom(
+                                      foregroundColor: theme.colorScheme.primary,
                                       padding: const EdgeInsets.symmetric(vertical: 12),
+                                      side: BorderSide(color: theme.colorScheme.primary),
                                       shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(12),
                                       ),
                                       minimumSize: const Size.fromHeight(44),
                                     ),
                                   )
-                                : ElevatedButton.icon(
+                                : OutlinedButton.icon(
                                     onPressed: () => _markAsUnread(context, ref),
                                     icon: const Icon(Icons.undo, size: 18),
                                     label: const Text('Restore'),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: theme.colorScheme.secondary,
-                                      foregroundColor: Colors.white,
+                                    style: OutlinedButton.styleFrom(
+                                      foregroundColor: theme.colorScheme.secondary,
                                       padding: const EdgeInsets.symmetric(vertical: 12),
+                                      side: BorderSide(color: theme.colorScheme.secondary),
                                       shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(12),
                                       ),
