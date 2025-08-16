@@ -4,7 +4,12 @@ Shelfie is a lightweight, cross-platform **"read & watch later" system** that ca
 
 It focuses on fast saving, organized consumption (tags, search, filters), and built-in analytics to help you manage your backlog.
 
+How users can use Shelfie:
 
+- **Save instantly from your browser:** right-click → "Save to Read/View Later" (extension sends the URL to a Supabase Edge Function that fetches metadata and creates the item).
+- **Consume in the app:** items appear under Reading (articles) or Viewing (videos) with thumbnails and snippets — open in browser, mark complete, or add tags.
+- **Organize & find:** preset + custom tags, fuzzy search, and filters make it quick to find what to read/watch next.
+- **Learn from usage:** built-in analytics (completion rates, time-to-complete, domain and tag trends) helps reduce backlog and improve focus.
 
 ## Quick preview
 A quick look at the browser extension and Flutter app UI to give a glimpse of the product.
