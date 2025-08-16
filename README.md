@@ -1,6 +1,41 @@
 # Shelfie - Personal Read & Watch Later System
 
-## Current Status: All Phases Complete + Mobile Optimized! 🎉
+Shelfie is a lightweight, cross-platform **"read & watch later" system** that captures links from a **browser extension**, stores them in a **Supabase backend**, and presents them in a polished **Flutter app (Windows desktop + Android)**. 
+
+It focuses on fast saving, organized consumption (tags, search, filters), and built-in analytics to help you manage your backlog.
+
+
+
+## Quick preview
+A quick look at the browser extension and Flutter app UI to give a glimpse of the product.
+
+### Browser Extension
+
+<table>
+  <tr>
+    <td align="center">
+      <img src="assets/extension-1.png" alt="Extension - popup" width="320" />
+    </td>
+    <td align="center">
+      <img src="assets/extension-2.png" alt="Extension - context save" width="320" />
+    </td>
+  </tr>
+</table>
+
+### Mobile App
+<table>
+  <tr>
+    <td align="center">
+      <img src="assets/app-screen-1.png" alt="App screen 1" width="260" />
+    </td>
+    <td align="center">
+      <img src="assets/app-screen-2.png" alt="App screen 2" width="260" />
+    </td>
+    <td align="center">
+      <img src="assets/app-screen-3.png" alt="App screen 3" width="260" />
+    </td>
+  </tr>
+</table>
 
 **Phase 1** (MVP Save & Consume) ✅ Complete  
 **Phase 2** (Tags, Search, Filters) ✅ Complete  
