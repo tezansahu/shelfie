@@ -192,6 +192,49 @@ serve(async (req) => {
   }
 
   try {
+    // Get the authorization header
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ 
+          error: 'Authentication required to save items',
+          details: 'Missing Authorization header'
+        }),
+        { status: 401, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Initialize Supabase client with the user's token for authentication
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      },
+      global: {
+        headers: {
+          Authorization: authHeader,
+        },
+      },
+    });
+
+    // Verify user authentication by getting the current user
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    
+    if (authError || !user) {
+      console.error('❌ Authentication failed:', authError);
+      return new Response(
+        JSON.stringify({ 
+          error: 'Authentication required to save items',
+          details: authError?.message || 'Invalid or expired token'
+        }),
+        { status: 401, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log(`🔐 Authenticated user: ${user.email} (${user.id})`);
+
     const { url } = await req.json();
     
     if (!url) {
@@ -206,21 +249,17 @@ serve(async (req) => {
     // Extract metadata
     const metadata = await extractMetadata(url);
     
-    // Initialize Supabase client
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
-
-    // Check for duplicates using canonical URL
+    // Check for duplicates using canonical URL and user_id
     const canonicalUrl = metadata.canonicalUrl || url;
     const { data: existingItems } = await supabase
       .from('items')
       .select('id, title, status')
+      .eq('user_id', user.id)
       .or(`url.eq.${url},canonical_url.eq.${canonicalUrl}`);
 
     if (existingItems && existingItems.length > 0) {
       const existing = existingItems[0];
-      console.log(`♻️ Item already exists: ${existing.title}`);
+      console.log(`♻️ Item already exists for user: ${existing.title}`);
       
       return new Response(
         JSON.stringify({
@@ -233,8 +272,9 @@ serve(async (req) => {
       );
     }
 
-    // Insert new item
+    // Insert new item with user_id
     const itemData = {
+      user_id: user.id,
       url,
       canonical_url: metadata.canonicalUrl,
       domain: metadata.domain,

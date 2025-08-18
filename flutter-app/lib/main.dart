@@ -3,7 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'config/app_config.dart';
 import 'services/supabase_service.dart';
-import 'screens/home_screen.dart';
+import 'services/auth_service.dart';
+import 'widgets/auth_wrapper.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -31,6 +32,13 @@ Future<void> _initializeSupabase() async {
       url: AppConfig.supabaseUrl,
       anonKey: AppConfig.supabaseAnonKey,
     );
+    
+    // Initialize Google Sign-In with web client ID
+    // In production, store this in environment variables
+    AuthService.instance.initializeGoogleSignIn(
+      webClientId: AppConfig.googleWebClientId,
+    );
+    
     print('✅ Supabase initialized successfully');
   } else {
     print('⚠️ Supabase not configured - please update .env file with your credentials');
@@ -219,7 +227,7 @@ class ShelfieApp extends StatelessWidget {
       theme: _buildLightTheme(),
       darkTheme: _buildDarkTheme(),
       themeMode: ThemeMode.system,
-      home: const HomeScreen(),
+      home: const AuthWrapper(),
     );
   }
 }

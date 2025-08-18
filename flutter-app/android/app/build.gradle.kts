@@ -3,6 +3,8 @@ plugins {
     id("kotlin-android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
+    // Add the Google Services plugin
+    id("com.google.gms.google-services")
 }
 
 android {
@@ -41,4 +43,9 @@ android {
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    // Add Google Play Services for Google Sign-In
+    implementation("com.google.android.gms:play-services-auth:20.7.0")
 }

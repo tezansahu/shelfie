@@ -25,6 +25,15 @@ class SupabaseService {
 class ItemsService {
   final SupabaseClient _client = SupabaseService.instance.client;
 
+  /// Ensure user is authenticated before any operation
+  String get _currentUserId {
+    final user = _client.auth.currentUser;
+    if (user == null) {
+      throw Exception('User not authenticated. Please sign in to access your items.');
+    }
+    return user.id;
+  }
+
   // Convert database snake_case to camelCase for model
   Map<String, dynamic> _convertToModelFormat(Map<String, dynamic> dbData) {
     return {
@@ -105,7 +114,10 @@ class ItemsService {
     int offset = 0,
   }) async {
     try {
-      // Use the view that includes tags
+      // Ensure user is authenticated
+      final userId = _currentUserId;
+      
+      // Use the view that includes tags with explicit user filtering as backup
       var query = _client
           .from('unread_items_with_tags_v')
           .select();
@@ -118,21 +130,19 @@ class ItemsService {
           .order('added_at', ascending: false)
           .range(offset, offset + limit - 1);
           
-      print('📱 Database response: $response');
+      print('📱 Database response for user $userId: $response');
       print('📱 Response type: ${response.runtimeType}');
       
-      if (response is List) {
-        return response.map((json) {
-          print('📱 Processing item: $json');
-          final itemData = Map<String, dynamic>.from(json as Map);
-          final convertedJson = _convertToModelFormatWithTags(itemData);
-          print('📱 Converted item: $convertedJson');
-          return Item.fromJson(convertedJson);
-        }).toList();
-      } else {
-        print('❌ Unexpected response type: ${response.runtimeType}');
-        return [];
-      }
+      final items = response.map((json) {
+        print('📱 Processing item: $json');
+        final itemData = Map<String, dynamic>.from(json as Map);
+        final convertedJson = _convertToModelFormatWithTags(itemData);
+        print('📱 Converted item: $convertedJson');
+        return Item.fromJson(convertedJson);
+      }).toList();
+      
+      print('📱 Retrieved ${items.length} unread items for user $userId');
+      return items;
     } catch (error, stackTrace) {
       print('❌ Error in getUnreadItems: $error');
       print('📱 Stack trace: $stackTrace');
@@ -146,18 +156,24 @@ class ItemsService {
     int offset = 0,
   }) async {
     try {
-      // Use the view that includes tags
+      // Ensure user is authenticated
+      final userId = _currentUserId;
+      
+      // Use the view that includes tags - RLS will automatically filter by user
       final response = await _client
           .from('archive_items_with_tags_v')
           .select()
           .order('finished_at', ascending: false)
           .range(offset, offset + limit - 1);
 
-      return response.map((json) {
+      final items = response.map((json) {
         final itemData = Map<String, dynamic>.from(json as Map);
         final convertedJson = _convertToModelFormatWithTags(itemData);
         return Item.fromJson(convertedJson);
       }).toList();
+      
+      print('📱 Retrieved ${items.length} archived items for user $userId');
+      return items;
     } catch (error) {
       print('❌ Error in getArchivedItems: $error');
       rethrow;
@@ -167,6 +183,10 @@ class ItemsService {
   // Update item status
   Future<Item> updateItemStatus(String itemId, ItemStatus status) async {
     try {
+      // Ensure user is authenticated
+      final userId = _currentUserId;
+      
+      // RLS will ensure user can only update their own items
       final response = await _client
           .from('items')
           .update({'status': status.value})
@@ -175,6 +195,7 @@ class ItemsService {
           .single();
 
       final convertedJson = _convertToModelFormat(response);
+      print('📱 Updated item status for user $userId: $itemId -> ${status.value}');
       return Item.fromJson(convertedJson);
     } catch (error) {
       print('❌ Error in updateItemStatus: $error');
@@ -185,6 +206,9 @@ class ItemsService {
   // Update item fields (title / description)
   Future<Item> updateItem(String itemId, {String? title, String? description}) async {
     try {
+      // Ensure user is authenticated
+      final userId = _currentUserId;
+      
       final updateMap = <String, dynamic>{
         'updated_at': DateTime.now().toIso8601String(),
       };
@@ -192,6 +216,7 @@ class ItemsService {
       if (title != null) updateMap['title'] = title;
       if (description != null) updateMap['description'] = description;
 
+      // RLS will ensure user can only update their own items
       final response = await _client
           .from('items')
           .update(updateMap)
@@ -200,6 +225,7 @@ class ItemsService {
           .single();
 
       final convertedJson = _convertToModelFormat(response);
+      print('📱 Updated item for user $userId: $itemId');
       return Item.fromJson(convertedJson);
     } catch (error) {
       print('❌ Error in updateItem: $error');
@@ -210,7 +236,12 @@ class ItemsService {
   // Delete item
   Future<void> deleteItem(String itemId) async {
     try {
-      print('🗑️ Deleting item: $itemId');
+      // Ensure user is authenticated
+      final userId = _currentUserId;
+      
+      print('🗑️ Deleting item for user $userId: $itemId');
+      
+      // RLS will ensure user can only delete their own items
       await _client.from('items').delete().eq('id', itemId);
       print('✅ Item deleted successfully');
     } catch (error) {
@@ -222,9 +253,13 @@ class ItemsService {
   // Add item manually (from app)
   Future<Item> addItem(String url) async {
     try {
-      print('📝 Adding URL via Edge Function: $url');
+      // Ensure user is authenticated
+      final userId = _currentUserId;
+      
+      print('📝 Adding URL via Edge Function for user $userId: $url');
       
       // Call the Edge Function to process the URL
+      // The function will automatically set user_id based on authenticated user
       final response = await _client.functions.invoke(
         'save-url',
         body: {
@@ -460,6 +495,21 @@ class ItemsService {
       throw Exception('No response data received');
     } catch (error) {
       print('❌ Error in addItemManual: $error');
+      rethrow;
+    }
+  }
+
+  // Migration method to assign orphaned items to current user
+  Future<void> migrateOrphanedItemsToCurrentUser() async {
+    try {
+      final userId = _currentUserId;
+      print('🔄 Migrating orphaned items to user: $userId');
+      
+      await _client.rpc('migrate_orphaned_items_to_current_user');
+      
+      print('✅ Successfully migrated orphaned items to current user');
+    } catch (error) {
+      print('❌ Error migrating orphaned items: $error');
       rethrow;
     }
   }

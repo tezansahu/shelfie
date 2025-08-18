@@ -3,6 +3,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 class AppConfig {
   static String get supabaseUrl => dotenv.env['SUPABASE_URL'] ?? '';
   static String get supabaseAnonKey => dotenv.env['SUPABASE_ANON_KEY'] ?? '';
+  static String get googleWebClientId => dotenv.env['GOOGLE_WEB_CLIENT_ID'] ?? '';
   static String get appName => dotenv.env['APP_NAME'] ?? 'Shelfie';
   static String get appVersion => dotenv.env['APP_VERSION'] ?? '1.0.0';
   static bool get debugMode => dotenv.env['DEBUG_MODE']?.toLowerCase() == 'true';
@@ -13,6 +14,7 @@ class AppConfig {
   static bool get isConfigured {
     return supabaseUrl.isNotEmpty && 
            supabaseAnonKey.isNotEmpty &&
+           googleWebClientId.isNotEmpty &&
            !supabaseUrl.contains('your-project-id') &&
            !supabaseAnonKey.contains('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...');
   }
@@ -24,6 +26,7 @@ class AppConfig {
       print('App Version: $appVersion');
       print('Supabase URL: ${supabaseUrl.isEmpty ? '[NOT SET]' : '[CONFIGURED]'}');
       print('Supabase Key: ${supabaseAnonKey.isEmpty ? '[NOT SET]' : '[CONFIGURED]'}');
+      print('Google Client ID: ${googleWebClientId.isEmpty ? '[NOT SET]' : '[CONFIGURED]'}');
       print('Debug Mode: $debugMode');
       print('Analytics: $enableAnalytics');
       print('Offline Sync: $enableOfflineSync');

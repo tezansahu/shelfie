@@ -6,6 +6,7 @@ import '../widgets/item_card.dart';
 import '../widgets/add_item_dialog.dart';
 import '../widgets/search_filter_bar.dart';
 import 'analytics_screen.dart';
+import 'profile_screen.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -131,6 +132,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   icon: Icons.refresh_rounded,
                   onPressed: () => _refreshData(),
                   tooltip: 'Refresh',
+                ),
+                const SizedBox(width: 8),
+                _buildModernActionButton(
+                  context,
+                  icon: Icons.person_rounded,
+                  onPressed: () => _navigateToProfile(context),
+                  tooltip: 'Profile',
                 ),
               ],
             ),
@@ -259,6 +267,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     ref.invalidate(unreadArticlesProvider);
     ref.invalidate(unreadVideosProvider);
     ref.invalidate(archivedItemsProvider);
+  }
+
+  void _navigateToProfile(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const ProfileScreen(),
+      ),
+    );
   }
 }
 
