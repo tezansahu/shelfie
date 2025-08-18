@@ -125,6 +125,33 @@ serve(async (req) => {
   }
 
   try {
+    // Get the authorization header
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      throw new Error('Authorization header is required');
+    }
+
+    // Extract the Google access token
+    const token = authHeader.replace('Bearer ', '');
+    
+    // Validate Google access token and get user info
+    console.log('Validating Google access token...');
+    const googleResponse = await fetch(`https://www.googleapis.com/oauth2/v2/userinfo?access_token=${token}`);
+    
+    if (!googleResponse.ok) {
+      throw new Error('Invalid or expired Google access token');
+    }
+    
+    const googleUser = await googleResponse.json();
+    const userId = `google_${googleUser.id}`;
+    
+    console.log(`Authenticated user: ${googleUser.email} (${userId})`);
+
+    // Initialize Supabase client with service role key for database operations
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
     const requestBody: SaveUrlRequest = await req.json();
     const { 
       url, 
@@ -141,17 +168,13 @@ serve(async (req) => {
     const cleanUrl = stripTrackingParams(new URL(url));
     const domain = parsedUrl.hostname;
 
-    console.log(`Processing URL: ${url} (domain: ${domain})`);
+    console.log(`Processing URL: ${url} (domain: ${domain}) for user: ${userId}`);
 
-    // Initialize Supabase client
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-    // Check for existing item to prevent duplicates
+    // Check for existing item to prevent duplicates (for this user)
     const { data: existingItem } = await supabase
       .from('items')
       .select('id, url, canonical_url')
+      .eq('user_id', userId)
       .or(`url.eq.${url},canonical_url.eq.${url},url.eq.${cleanUrl.toString()},canonical_url.eq.${cleanUrl.toString()}`)
       .maybeSingle();
 
@@ -248,6 +271,7 @@ serve(async (req) => {
     const { data, error } = await supabase
       .from('items')
       .insert({
+        user_id: userId,  // Associate with authenticated user
         url: cleanUrl.toString(),
         canonical_url,
         domain,
