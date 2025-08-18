@@ -4,11 +4,24 @@ import '../models/analytics_models.dart';
 class AnalyticsService {
   final SupabaseClient _supabase = Supabase.instance.client;
 
+  /// Ensure user is authenticated before any analytics operation
+  String get _currentUserId {
+    final user = _supabase.auth.currentUser;
+    if (user == null) {
+      throw Exception('User not authenticated. Please sign in to access analytics.');
+    }
+    return user.id;
+  }
+
   /// Get analytics summary for the specified date range
   Future<AnalyticsSummary> getAnalyticsSummary({
     AnalyticsDateRange range = AnalyticsDateRange.days90,
   }) async {
     try {
+      // Ensure user is authenticated
+      final userId = _currentUserId;
+      print('📊 Getting analytics for user: $userId');
+      
       // Call the enhanced analytics function directly
       final response = await _supabase.rpc(
         'analytics_summary',
@@ -22,11 +35,11 @@ class AnalyticsService {
       }
 
       // Debug print the raw response
-      print('Analytics response: $response');
+      print('📊 Analytics response: $response');
 
       return AnalyticsSummary.fromJson(response as Map<String, dynamic>);
     } catch (e) {
-      print('Analytics error details: $e');
+      print('❌ Analytics error details: $e');
       // Return a default/empty analytics summary for now
       return const AnalyticsSummary(
         metrics: AnalyticsMetrics(
@@ -55,6 +68,10 @@ class AnalyticsService {
   Future<Map<String, dynamic>> getRawAnalytics({
     AnalyticsDateRange range = AnalyticsDateRange.days90,
   }) async {
+    // Ensure user is authenticated
+    final userId = _currentUserId;
+    print('📊 Getting raw analytics for user: $userId');
+    
     final response = await _supabase.rpc(
       'analytics_summary',
       params: {
@@ -70,9 +87,13 @@ class AnalyticsService {
     required DateTime startDate,
     required DateTime endDate,
   }) async {
+    // Ensure user is authenticated
+    final userId = _currentUserId;
+    
     final query = _supabase
         .from('items')
         .select('id, status, content_type, finished_at, added_at')
+        .eq('user_id', userId)
         .gte('added_at', startDate.toIso8601String())
         .lte('added_at', endDate.toIso8601String());
 
@@ -97,23 +118,48 @@ class AnalyticsService {
     AnalyticsDateRange range = AnalyticsDateRange.days30,
     int limit = 10,
   }) async {
-    final query = '''
-      SELECT 
-        t.name,
-        t.type,
-        COUNT(*) as completion_count
-      FROM tags t
-      JOIN item_tags it ON t.id = it.tag_id
-      JOIN items i ON it.item_id = i.id
-      WHERE i.status = 'completed'
-        AND i.finished_at >= '${range.startDate.toIso8601String()}'
-      GROUP BY t.id, t.name, t.type
-      ORDER BY COUNT(*) DESC
-      LIMIT $limit
-    ''';
+    // Ensure user is authenticated
+    final userId = _currentUserId;
+    
+    // Use proper Supabase query builder instead of raw SQL
+    final response = await _supabase
+        .from('tags')
+        .select('''
+          name,
+          type,
+          item_tags!inner(
+            items!inner(
+              id,
+              status,
+              finished_at
+            )
+          )
+        ''')
+        .eq('user_id', userId)
+        .eq('item_tags.items.status', 'completed')
+        .gte('item_tags.items.finished_at', range.startDate.toIso8601String())
+        .limit(limit);
 
-    final response = await _supabase.rpc('execute_query', params: {'query': query});
-    return List<Map<String, dynamic>>.from(response ?? []);
+    // Process the response to count completions
+    final tagCounts = <String, Map<String, dynamic>>{};
+    
+    for (final tag in response) {
+      final tagName = tag['name'] as String;
+      final tagType = tag['type'] as String;
+      final itemTags = tag['item_tags'] as List;
+      
+      tagCounts[tagName] = {
+        'name': tagName,
+        'type': tagType,
+        'completion_count': itemTags.length,
+      };
+    }
+    
+    // Sort by completion count and return
+    final sortedTags = tagCounts.values.toList()
+      ..sort((a, b) => (b['completion_count'] as int).compareTo(a['completion_count'] as int));
+    
+    return sortedTags.take(limit).toList();
   }
 
   /// Get domain statistics
@@ -121,56 +167,90 @@ class AnalyticsService {
     AnalyticsDateRange range = AnalyticsDateRange.days90,
     int limit = 10,
   }) async {
-    final query = '''
-      SELECT 
-        domain,
-        COUNT(*) as total_count,
-        COUNT(*) FILTER (WHERE status = 'completed') as completed_count,
-        ROUND(
-          COUNT(*) FILTER (WHERE status = 'completed')::decimal / COUNT(*) * 100, 
-          1
-        ) as completion_rate
-      FROM items
-      WHERE added_at >= '${range.startDate.toIso8601String()}'
-      GROUP BY domain
-      ORDER BY COUNT(*) DESC
-      LIMIT $limit
-    ''';
+    // Ensure user is authenticated
+    final userId = _currentUserId;
+    
+    // Use proper Supabase query builder
+    final response = await _supabase
+        .from('items')
+        .select('domain, status')
+        .eq('user_id', userId)
+        .gte('added_at', range.startDate.toIso8601String());
 
-    final response = await _supabase.rpc('execute_query', params: {'query': query});
-    return List<Map<String, dynamic>>.from(response ?? []);
+    // Process the data to calculate domain stats
+    final domainStats = <String, Map<String, dynamic>>{};
+    
+    for (final item in response) {
+      final domain = item['domain'] as String;
+      final status = item['status'] as String;
+      
+      if (!domainStats.containsKey(domain)) {
+        domainStats[domain] = {
+          'domain': domain,
+          'total_count': 0,
+          'completed_count': 0,
+        };
+      }
+      
+      domainStats[domain]!['total_count']++;
+      if (status == 'completed') {
+        domainStats[domain]!['completed_count']++;
+      }
+    }
+    
+    // Calculate completion rates and sort
+    final sortedDomains = domainStats.values.map((domain) {
+      final totalCount = domain['total_count'] as int;
+      final completedCount = domain['completed_count'] as int;
+      final completionRate = totalCount > 0 ? (completedCount / totalCount * 100) : 0.0;
+      
+      return {
+        ...domain,
+        'completion_rate': completionRate.round(),
+      };
+    }).toList()
+      ..sort((a, b) => (b['total_count'] as int).compareTo(a['total_count'] as int));
+    
+    return sortedDomains.take(limit).toList();
   }
 
   /// Get streak information
   Future<Map<String, dynamic>> getStreakInfo() async {
+    // Ensure user is authenticated
+    final userId = _currentUserId;
+    
     // Get daily completion counts for the last 90 days
-    final query = '''
-      SELECT 
-        DATE_TRUNC('day', finished_at) as completion_date,
-        COUNT(*) as completions
-      FROM items
-      WHERE status = 'completed'
-        AND finished_at >= NOW() - INTERVAL '90 days'
-      GROUP BY DATE_TRUNC('day', finished_at)
-      ORDER BY completion_date DESC
-    ''';
+    final ninetyDaysAgo = DateTime.now().subtract(const Duration(days: 90));
+    
+    final response = await _supabase
+        .from('items')
+        .select('finished_at')
+        .eq('user_id', userId)
+        .eq('status', 'completed')
+        .gte('finished_at', ninetyDaysAgo.toIso8601String())
+        .order('finished_at', ascending: false);
 
-    final response = await _supabase.rpc('execute_query', params: {'query': query});
-    final dailyCompletions = List<Map<String, dynamic>>.from(response ?? []);
+    // Process completions by day
+    final dailyCompletions = <String, int>{};
+    
+    for (final item in response) {
+      final finishedAt = DateTime.parse(item['finished_at'] as String);
+      final dayKey = DateTime(finishedAt.year, finishedAt.month, finishedAt.day).toIso8601String().split('T')[0];
+      
+      dailyCompletions[dayKey] = (dailyCompletions[dayKey] ?? 0) + 1;
+    }
 
     // Calculate current streak
     int currentStreak = 0;
-    DateTime today = DateTime.now();
-    DateTime checkDate = DateTime(today.year, today.month, today.day);
-
-    for (int i = 0; i < dailyCompletions.length; i++) {
-      final completionDate = DateTime.parse(dailyCompletions[i]['completion_date']);
-      final completionDay = DateTime(completionDate.year, completionDate.month, completionDate.day);
+    DateTime checkDate = DateTime.now();
+    
+    while (true) {
+      final dayKey = DateTime(checkDate.year, checkDate.month, checkDate.day).toIso8601String().split('T')[0];
       
-      if (completionDay == checkDate) {
+      if (dailyCompletions.containsKey(dayKey)) {
         currentStreak++;
         checkDate = checkDate.subtract(const Duration(days: 1));
-      } else if (completionDay.isBefore(checkDate)) {
+      } else {
         break;
       }
     }
@@ -178,26 +258,34 @@ class AnalyticsService {
     // Calculate longest streak
     int longestStreak = 0;
     int tempStreak = 0;
+    
+    final sortedDays = dailyCompletions.keys.toList()..sort();
     DateTime? lastDate;
-
-    for (final completion in dailyCompletions.reversed) {
-      final completionDate = DateTime.parse(completion['completion_date']);
-      final completionDay = DateTime(completionDate.year, completionDate.month, completionDate.day);
+    
+    for (final dayStr in sortedDays) {
+      final currentDate = DateTime.parse(dayStr);
       
-      if (lastDate == null || completionDay == lastDate.subtract(const Duration(days: 1))) {
+      if (lastDate == null || currentDate == lastDate.add(const Duration(days: 1))) {
         tempStreak++;
         longestStreak = tempStreak > longestStreak ? tempStreak : longestStreak;
       } else {
         tempStreak = 1;
       }
       
-      lastDate = completionDay;
+      lastDate = currentDate;
     }
+
+    // Convert daily completions to the expected format
+    final dailyCompletionsList = dailyCompletions.entries.map((entry) => {
+      'completion_date': entry.key,
+      'completions': entry.value,
+    }).toList()
+      ..sort((a, b) => (b['completion_date'] as String).compareTo(a['completion_date'] as String));
 
     return {
       'current_streak': currentStreak,
       'longest_streak': longestStreak,
-      'daily_completions': dailyCompletions,
+      'daily_completions': dailyCompletionsList,
     };
   }
 }

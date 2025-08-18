@@ -35,13 +35,30 @@ class LoginScreen extends ConsumerWidget {
                     width: 120,
                     height: 120,
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(30),
-                    ),
-                    child: const Icon(
-                      Icons.bookmarks_rounded,
-                      size: 60,
                       color: Colors.white,
+                      borderRadius: BorderRadius.circular(30),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 8,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Image.asset(
+                        'assets/icon/app_icon.png',
+                        width: 80,
+                        height: 80,
+                        errorBuilder: (context, error, stackTrace) {
+                          return const Icon(
+                            Icons.bookmarks_rounded,
+                            size: 60,
+                            color: Color(0xFF596BFB),
+                          );
+                        },
+                      ),
                     ),
                   ),
                   
@@ -94,18 +111,6 @@ class LoginScreen extends ConsumerWidget {
                         ),
                         
                         const SizedBox(height: 16),
-                        
-                        const Text(
-                          'Save articles and videos from anywhere on the web, then organize and enjoy them later. Sign in with Google to get started.',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.white70,
-                            height: 1.4,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                        
-                        const SizedBox(height: 32),
                         
                         // Google Sign In Button
                         SizedBox(
