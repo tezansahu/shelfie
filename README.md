@@ -31,6 +31,9 @@ A quick look at the browser extension and Flutter app UI to give a glimpse of th
 <table>
   <tr>
     <td align="center">
+      <img src="assets/app-screen-0.png" alt="App screen 0" width="260" />
+    </td>
+    <td align="center">
       <img src="assets/app-screen-1.png" alt="App screen 1" width="260" />
     </td>
     <td align="center">
@@ -47,6 +50,7 @@ A quick look at the browser extension and Flutter app UI to give a glimpse of th
 **Phase 3** (Analytics) ✅ Complete  
 **UI Modernization** ✅ Complete  
 **Mobile Optimization** ✅ Complete  
+**Google OAuth Integration** ✅ Complete  
 
 ## ✅ What's Included (All Phases Complete)
 
@@ -71,6 +75,7 @@ A quick look at the browser extension and Flutter app UI to give a glimpse of th
 
 ### 🌐 Browser Extension (Chrome/Edge)
 - Manifest V3 compatible with context menu integration
+- Sign in with Google account
 - Right-click "Save to Read/Watch Later" functionality
 - Configuration popup for Supabase credentials (streamlined interface)
 - Offline queue for failed saves with retry logic
@@ -109,6 +114,15 @@ A quick look at the browser extension and Flutter app UI to give a glimpse of th
   - **Optimized Cards:** Equal-weight action buttons with shortened text
   - **Analytics Mobile:** Responsive metric grids and chart sizing for mobile viewing
   - **Cross-Platform:** Consistent experience across Windows desktop and Android
+
+- **Google OAuth Integration:**
+  - Uses a Google Web Client ID via `AppConfig.googleWebClientId` (see `lib/config/app_config.dart`).
+  - Signs in with Google, then exchanges tokens with Supabase Auth to obtain a Supabase session (JWT + refresh token).
+  - Session is managed by Supabase (auto-refresh enabled) and used for all DB/Edge Function calls.
+  - RLS enforced automatically: requests run as the authenticated user (`auth.uid()`), isolating user data.
+  - Sign-in/out handled by `AuthService` with a simple one-tap flow and clear error states.
+  - Consistent auth across app and extension: the same Supabase project and Google Web client are used.
+
 
 ## 🚀 Getting Started
 
@@ -184,7 +198,9 @@ A quick look at the browser extension and Flutter app UI to give a glimpse of th
 1. Open Chrome/Edge and go to Extensions page
 2. Enable "Developer mode"
 3. Click "Load unpacked" and select the `browser-extension` folder
-4. Click the extension icon and configure your Supabase URL and API key
+4. Click the extension icon and sign in with Google in the popup (no API key entry needed)
+
+> Note: The extension reads your Supabase URL and anon key from `browser-extension/config.js` during development.
 
 ### 3. Setup Flutter App
 
@@ -407,3 +423,41 @@ The system is now production-ready with:
 ---
 
 *Shelfie: Your personal reading and watching companion, designed for the modern knowledge worker.* 🎯
+
+---
+
+## 🔐 Google OAuth Integration
+
+Shelfie uses Google Sign‑In end to end, anchored by Supabase Auth.
+
+- Supabase is the identity provider broker. You configure a Google Web client in Supabase. Supabase handles the Google OAuth redirect and issues a Supabase session (JWT + refresh token).
+- Flutter app signs in with Google using the same Web client and exchanges the tokens with Supabase. The app then uses the Supabase session to call the database and Edge Functions with Row Level Security (RLS).
+- The Browser Extension uses a secure OAuth flow without publishing: it launches a web auth flow to Supabase’s Google provider and receives a Supabase session back. It stores the session (access + refresh token) locally and calls Edge Functions with Authorization: Bearer <Supabase JWT> so saving happens under the signed‑in user.
+
+### Setup summary
+1) Google Cloud Console → Credentials → Web client (used by both app and Supabase)
+  - Authorized redirect URI must include:
+    - `https://<YOUR_SUPABASE_PROJECT>.supabase.co/auth/v1/callback`
+
+2) Supabase Dashboard → Authentication → Providers → Google
+  - Paste the Web client’s Client ID and Secret.
+
+3) Supabase Dashboard → Authentication → URL Configuration → Redirect URLs
+  - Add the extension’s runtime redirect URL (Chrome intercepts this URL, no publishing required):
+    - `https://<your-extension-id>.chromiumapp.org/supabase`
+
+4) Extension configuration
+  - `browser-extension/config.js` must contain your Supabase URL and anon key for development.
+  - The extension opens Supabase’s authorize endpoint with `redirect_to` set to the runtime URL returned by `chrome.identity.getRedirectURL('supabase')`.
+  - On success, it stores the Supabase access token and refresh token.
+
+### Why the chromiumapp URL looks “dead” in a browser
+The `https://<id>.chromiumapp.org/*` URL is special; Chrome intercepts it for OAuth flows. Navigating to it directly will show DNS errors. This is expected. It only works within the `chrome.identity.launchWebAuthFlow` flow.
+
+### Common pitfalls & fixes
+- redirect_uri_mismatch from Google: Ensure Supabase’s Google provider uses the Web client, not a Chrome Extension client. The Web client must whitelist the Supabase callback URL exactly.
+- Extension sign‑in fails: Verify the Supabase Redirect URLs include the exact chromiumapp URL with the path you pass to `getRedirectURL`.
+- 401 calling Edge Functions: The extension must send `Authorization: Bearer <Supabase access token>` and `apikey: <anon key>`. If 401 persists, refresh the token using the stored refresh token via Supabase’s `/auth/v1/token?grant_type=refresh_token`.
+
+### Security and RLS
+All database access is protected by RLS with policies bound to `auth.uid()`. Edge Functions receive the user’s Supabase JWT via the Authorization header and call the database with that context. This guarantees items are stored and read only for the authenticated user.
