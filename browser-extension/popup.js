@@ -6,6 +6,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   const statusReady = document.getElementById('status-ready');
   const statusNotConfigured = document.getElementById('status-not-configured');
   const statusAuthRequired = document.getElementById('status-auth-required');
+  const userBar = document.getElementById('user-bar');
+  const avatarImg = document.getElementById('avatar-img');
+  const avatarFallback = document.getElementById('avatar-fallback');
+  const userName = document.getElementById('user-name');
+  const userEmail = document.getElementById('user-email');
 
   // Check configuration status
   await checkStatus();
@@ -28,6 +33,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         signInBtn.classList.add('hidden');
         saveCurrentBtn.classList.add('hidden');
         signOutBtn.classList.add('hidden');
+        userBar.classList.remove('visible');
         saveCurrentBtn.disabled = true;
         return;
       }
@@ -41,12 +47,31 @@ document.addEventListener('DOMContentLoaded', async () => {
         saveCurrentBtn.classList.remove('hidden');
         signOutBtn.classList.remove('hidden');
         saveCurrentBtn.disabled = false;
+
+        // Populate user bar
+        const p = status.profile || {};
+        const name = p.user_metadata?.full_name || p.user_metadata?.name || p.email || 'User';
+        const email = p.email || '';
+        const picture = p.user_metadata?.avatar_url || p.user_metadata?.picture;
+        userName.textContent = name;
+        userEmail.textContent = email;
+        if (picture) {
+          avatarImg.src = picture;
+          avatarImg.classList.remove('hidden');
+          avatarFallback.classList.add('hidden');
+        } else {
+          avatarImg.classList.add('hidden');
+          avatarFallback.classList.remove('hidden');
+          avatarFallback.textContent = (name?.[0] || 'U').toUpperCase();
+        }
+        userBar.classList.add('visible');
       } else {
         statusReady.classList.add('hidden');
         statusAuthRequired.classList.remove('hidden');
         signInBtn.classList.remove('hidden');
         saveCurrentBtn.classList.add('hidden');
         signOutBtn.classList.add('hidden');
+        userBar.classList.remove('visible');
         saveCurrentBtn.disabled = true;
       }
     } catch (error) {
@@ -57,6 +82,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       signInBtn.classList.add('hidden');
       saveCurrentBtn.classList.add('hidden');
       signOutBtn.classList.add('hidden');
+      userBar.classList.remove('visible');
       saveCurrentBtn.disabled = true;
     }
   }

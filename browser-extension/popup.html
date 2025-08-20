@@ -5,107 +5,175 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Shelfie</title>
   <style>
+    :root {
+      --color-primary: #596BFB;
+      --color-primary-variant: #4A5EE8;
+      --color-secondary: #8B97FF;
+      --color-accent: #E8EAFF;
+      --color-surface: #F8F9FF;
+      --color-bg: #F6F7FF;
+      --text: #0F172A;
+      --muted: #64748B;
+      --ring: rgba(89,107,251,0.35);
+      --card: #FFFFFF;
+      --border: #EEF2FF;
+      --success-bg: #DCFCE7;
+      --success-text: #166534;
+      --danger-bg: #FEF2F2;
+      --danger-text: #B91C1C;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --color-bg: #0F172A;
+        --color-surface: #111827;
+        --card: #111827;
+        --text: #F9FAFB;
+        --muted: #9CA3AF;
+        --border: #1F2937;
+        --ring: rgba(139,151,255,0.25);
+        --success-bg: rgba(22, 101, 52, 0.2);
+        --success-text: #86EFAC;
+        --danger-bg: rgba(185, 28, 28, 0.2);
+        --danger-text: #FCA5A5;
+      }
+    }
+
+    html, body { min-width: 320px; }
     body {
-      font-family: system-ui, -apple-system, sans-serif;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Apple Color Emoji", "Segoe UI Emoji";
       margin: 0;
       padding: 16px;
-      background: #f5f5f5;
-      min-width: 280px;
-      max-width: 320px;
+      background: radial-gradient(1200px 1200px at -10% -10%, var(--color-accent), transparent 40%),
+                  radial-gradient(1000px 1000px at 120% 0%, rgba(74,94,232,0.15), transparent 40%),
+                  var(--color-bg);
+      color: var(--text);
     }
-    
+
     .container {
-      background: white;
-      border-radius: 8px;
-      padding: 20px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      background: var(--card);
+      border-radius: 16px;
+      padding: 18px;
+      border: 1px solid var(--border);
+      box-shadow: 0 8px 20px rgba(17, 24, 39, 0.08), 0 2px 6px rgba(17, 24, 39, 0.05);
     }
-    
-    h1 {
-      margin: 0 0 16px 0;
-      color: #1a1a1a;
-      font-size: 18px;
-      font-weight: 600;
+
+  .header {
       display: flex;
       align-items: center;
-      gap: 8px;
+      justify-content: space-between;
+      margin-bottom: 12px;
+      gap: 12px;
+      flex-wrap: wrap;
     }
-    
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .brand-logo {
+      width: 28px;
+      height: 28px;
+      display: block;
+      border-radius: 6px;
+      box-shadow: 0 4px 12px rgba(89,107,251,0.28);
+    }
+    h1 {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: 0.2px;
+    }
+
+    .user-bar {
+      display: none;
+      align-items: center;
+      gap: 10px;
+      padding: 6px 10px;
+      background: var(--color-surface);
+      border: 1px solid var(--border);
+      border-radius: 9999px;
+      margin: 4px auto 10px auto;
+      width: fit-content;
+      box-shadow: 0 2px 8px rgba(17, 24, 39, 0.12);
+    }
+    .user-bar.visible { display: flex; }
+    .avatar {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: var(--color-accent);
+      color: var(--color-primary-variant);
+      display: grid; place-items: center;
+      font-weight: 700; font-size: 12px;
+      border: 1px solid var(--border);
+    }
+    .user-text { line-height: 1.1; }
+    .user-name { font-size: 12px; font-weight: 700; }
+    .user-email { font-size: 11px; color: var(--muted); }
+
     .status {
       padding: 12px;
-      border-radius: 6px;
-      margin-bottom: 16px;
-      font-size: 14px;
+      border-radius: 10px;
+      margin: 10px 0 14px;
+      font-size: 13px;
+      border: 1px solid var(--border);
     }
-    
-    .status.ready {
-      background: #dcfce7;
-      color: #166534;
-      border: 1px solid #bbf7d0;
-    }
-    
-    .status.not-configured {
-      background: #fef2f2;
-      color: #dc2626;
-      border: 1px solid #fecaca;
-    }
-    
-    .actions {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-    
+    .status.ready { background: var(--success-bg); color: var(--success-text); border-color: transparent; }
+    .status.not-configured { background: var(--danger-bg); color: var(--danger-text); border-color: transparent; }
+
+    .actions { display: flex; flex-direction: column; gap: 10px; }
     button {
-      padding: 10px 16px;
+      padding: 10px 14px;
       border: none;
-      border-radius: 6px;
+      border-radius: 10px;
       font-size: 14px;
-      font-weight: 500;
+      font-weight: 600;
       cursor: pointer;
-      transition: background-color 0.2s;
+      transition: transform .06s ease-out, box-shadow .2s, background .2s;
     }
-    
+    button:active { transform: translateY(1px); }
+
     .primary-button {
-      background: #3b82f6;
-      color: white;
+      background: linear-gradient(135deg, var(--color-primary), var(--color-primary-variant));
+      color: #fff;
+      box-shadow: 0 8px 16px rgba(89,107,251,0.35);
     }
-    
-    .primary-button:hover {
-      background: #2563eb;
-    }
-    
-    .primary-button:disabled {
-      background: #9ca3af;
-      cursor: not-allowed;
-    }
-    
+    .primary-button:hover { filter: brightness(1.03); }
+    .primary-button:disabled { background: #A5B4FC; box-shadow: none; cursor: not-allowed; }
+
     .secondary-button {
-      background: #f3f4f6;
-      color: #374151;
+      background: var(--color-surface);
+      color: var(--text);
+      border: 1px solid var(--border);
     }
-    
-    .secondary-button:hover {
-      background: #e5e7eb;
-    }
-    
+    .secondary-button:hover { background: #EEF2FF; }
+
     .info {
-      font-size: 12px;
-      color: #6b7280;
+      font-size: 11.5px;
+      color: var(--muted);
       margin-top: 12px;
-      line-height: 1.4;
+      line-height: 1.5;
     }
-    
-    .hidden {
-      display: none;
-    }
+    .hidden { display: none; }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>
-      🔖 Shelfie
-    </h1>
+    <div class="header">
+      <div class="brand">
+        <img class="brand-logo" src="icons/icon-32.png" alt="Shelfie logo" />
+        <h1>Shelfie</h1>
+      </div>
+    </div>
+    <div id="user-bar" class="user-bar">
+      <img id="avatar-img" class="avatar hidden" alt="" />
+      <div id="avatar-fallback" class="avatar hidden">U</div>
+      <div class="user-text">
+        <div id="user-name" class="user-name"></div>
+        <div id="user-email" class="user-email"></div>
+      </div>
+    </div>
     
     <div id="status-ready" class="status ready hidden">
       ✅ Ready to save! Right-click any page to save it to your reading list.
@@ -119,7 +187,7 @@
       🔒 Sign in with Google to start saving with Shelfie.
     </div>
     
-    <div class="actions">
+  <div class="actions">
       <button id="sign-in" class="primary-button hidden">
         🔑 Sign in with Google
       </button>
