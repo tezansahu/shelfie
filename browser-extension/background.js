@@ -27,12 +27,93 @@ const isConfigured = () => {
          config.supabase.anonKey.length > 50;
 };
 
+// ============ Auth (Supabase OAuth) ============
+// Keys for storage
+const STORAGE_KEYS = {
+  token: 'supabaseAccessToken',
+  refreshToken: 'supabaseRefreshToken',
+  tokenExpiry: 'supabaseTokenExpiry',
+  profile: 'supabaseProfile',
+};
+
+// Get stored auth state
+async function getAuthState() {
+  const result = await chrome.storage.local.get([STORAGE_KEYS.token, STORAGE_KEYS.profile]);
+  return {
+    accessToken: result[STORAGE_KEYS.token] || null,
+    profile: result[STORAGE_KEYS.profile] || null,
+    isAuthenticated: !!result[STORAGE_KEYS.token],
+  };
+}
+
+// Clear auth state
+async function signOut() {
+  // Clear cached tokens from Chrome
+  if (chrome.identity?.clearAllCachedAuthTokens) {
+    try { chrome.identity.clearAllCachedAuthTokens(() => {}); } catch {}
+  }
+  await chrome.storage.local.remove([STORAGE_KEYS.token, STORAGE_KEYS.profile]);
+  await updateContextMenu();
+}
+
+// Start Supabase OAuth in a popup and store the session
+async function signInInteractive() {
+  const config = getConfig();
+  const redirectUri = chrome.identity.getRedirectURL('supabase');
+  const authUrl = `${config.supabase.url}/auth/v1/authorize?provider=google&redirect_to=${encodeURIComponent(redirectUri)}`;
+
+  return new Promise((resolve, reject) => {
+    chrome.identity.launchWebAuthFlow({ url: authUrl, interactive: true }, async (redirectResponse) => {
+      if (chrome.runtime.lastError) return reject(new Error(chrome.runtime.lastError.message));
+      if (!redirectResponse) return reject(new Error('No redirect response'));
+
+      try {
+        const fragment = redirectResponse.split('#')[1] || '';
+        const params = new URLSearchParams(fragment);
+        const accessToken = params.get('access_token');
+        const refreshToken = params.get('refresh_token');
+        const expiresIn = parseInt(params.get('expires_in') || '3600', 10);
+
+        if (!accessToken) throw new Error('No access token in response');
+
+        // Fetch user profile from Supabase
+        const userRes = await fetch(`${config.supabase.url}/auth/v1/user`, {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'apikey': config.supabase.anonKey
+          }
+        });
+        if (!userRes.ok) throw new Error('Failed to fetch user profile');
+        const profile = await userRes.json();
+
+        await chrome.storage.local.set({
+          [STORAGE_KEYS.token]: accessToken,
+          [STORAGE_KEYS.refreshToken]: refreshToken,
+          [STORAGE_KEYS.tokenExpiry]: Date.now() + (expiresIn * 1000) - 60000, // 1 min early
+          [STORAGE_KEYS.profile]: profile,
+        });
+
+        await updateContextMenu();
+        resolve({ token: accessToken, profile });
+      } catch (e) {
+        reject(e);
+      }
+    });
+  });
+}
+
+// Update context menu based on auth state
+async function updateContextMenu() {
+  const { isAuthenticated } = await getAuthState();
+  createContextMenu(isAuthenticated);
+}
+
 // Initialize extension
 chrome.runtime.onInstalled.addListener(async () => {
   console.log('Shelfie extension installed');
   
   // Always create context menu first, then check configuration
-  createContextMenu();
+  await updateContextMenu();
   
   // Check if properly configured
   if (!isConfigured()) {
@@ -46,21 +127,40 @@ chrome.runtime.onInstalled.addListener(async () => {
   }
 });
 
+// Also update context menu when the service worker starts
+updateContextMenu();
+
 // Create context menu item
-function createContextMenu() {
+function createContextMenu(isAuthenticated = false) {
   try {
     chrome.contextMenus.removeAll(() => {
-      chrome.contextMenus.create({
-        id: 'save-to-shelfie',
-        title: 'Save to Read/Watch Later',
-        contexts: ['page', 'link', 'selection']
-      }, () => {
-        if (chrome.runtime.lastError) {
-          console.error('Context menu creation error:', chrome.runtime.lastError);
-        } else {
-          console.log('Context menu created successfully');
-        }
-      });
+      // Signed-in menu
+      if (isAuthenticated) {
+        chrome.contextMenus.create({
+          id: 'save-to-shelfie',
+          title: 'Save to Read/Watch Later',
+          contexts: ['page', 'link', 'selection']
+        }, () => {
+          if (chrome.runtime.lastError) {
+            console.error('Context menu creation error:', chrome.runtime.lastError);
+          } else {
+            console.log('Context menu created successfully');
+          }
+        });
+      } else {
+        // Sign-in menu
+        chrome.contextMenus.create({
+          id: 'shelfie-sign-in',
+          title: 'Sign in to Shelfie',
+          contexts: ['action']
+        }, () => {
+          if (chrome.runtime.lastError) {
+            console.error('Context menu creation error:', chrome.runtime.lastError);
+          } else {
+            console.log('Sign-in context menu created');
+          }
+        });
+      }
     });
   } catch (error) {
     console.error('Error creating context menu:', error);
@@ -72,6 +172,14 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   if (info.menuItemId === 'save-to-shelfie') {
     const url = info.linkUrl || tab.url;
     await saveUrl(url, tab);
+  }
+  if (info.menuItemId === 'shelfie-sign-in') {
+    try {
+      await signInInteractive();
+      showNotification('Signed in', 'You can now save to Shelfie');
+    } catch (e) {
+      showNotification('Sign-in failed', e.message);
+    }
   }
 });
 
@@ -98,6 +206,13 @@ async function saveUrl(url, tab) {
       return;
     }
     
+    // Ensure authenticated
+    const { isAuthenticated, accessToken } = await getAuthState();
+    if (!isAuthenticated) {
+      showNotification('Sign in required', 'Please sign in to save to Shelfie');
+      return;
+    }
+    
     // Detect browser platform
     const platform = getBrowserPlatform();
     
@@ -115,15 +230,51 @@ async function saveUrl(url, tab) {
     }
     
     // Make request to Edge Function
-    const response = await fetch(endpoint, {
+  let response = await fetch(endpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${config.supabase.anonKey}`,
-        'apikey': config.supabase.anonKey
+    // Pass Supabase session token to the edge function
+  'Authorization': `Bearer ${accessToken}`,
+  'apikey': config.supabase.anonKey
       },
       body: JSON.stringify(payload)
     });
+    
+    // If unauthorized, try to refresh token once
+    if (response.status === 401) {
+      // Try to refresh Supabase token using refresh_token
+      const store = await chrome.storage.local.get([STORAGE_KEYS.refreshToken]);
+      const refreshToken = store[STORAGE_KEYS.refreshToken];
+      if (!refreshToken) throw new Error('Session expired. Please sign in again.');
+      const tokenRes = await fetch(`${config.supabase.url}/auth/v1/token?grant_type=refresh_token`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': config.supabase.anonKey
+        },
+        body: JSON.stringify({ refresh_token: refreshToken })
+      });
+      if (!tokenRes.ok) throw new Error('Failed to refresh session');
+      const tokenJson = await tokenRes.json();
+      const newAccess = tokenJson.access_token;
+      const newRefresh = tokenJson.refresh_token || refreshToken;
+      const expiresIn = tokenJson.expires_in || 3600;
+      await chrome.storage.local.set({
+        [STORAGE_KEYS.token]: newAccess,
+        [STORAGE_KEYS.refreshToken]: newRefresh,
+        [STORAGE_KEYS.tokenExpiry]: Date.now() + (expiresIn * 1000) - 60000,
+      });
+      response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${newAccess}`,
+          'apikey': config.supabase.anonKey
+        },
+        body: JSON.stringify(payload)
+      });
+    }
     
     if (!response.ok) {
       const errorData = await response.json().catch(() => null);
@@ -290,10 +441,29 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
   
   if (request.action === 'check-status') {
-    sendResponse({
-      configured: isConfigured(),
-      ready: isConfigured()
-    });
+    (async () => {
+      const auth = await getAuthState();
+      sendResponse({
+        configured: isConfigured(),
+        ready: isConfigured() && auth.isAuthenticated,
+        isAuthenticated: auth.isAuthenticated,
+        profile: auth.profile || null,
+      });
+    })();
+    return true;
+  }
+
+  if (request.action === 'sign-in') {
+    signInInteractive()
+      .then(({ profile }) => sendResponse({ success: true, profile }))
+      .catch((e) => sendResponse({ success: false, error: e.message }));
+    return true;
+  }
+
+  if (request.action === 'sign-out') {
+    signOut()
+      .then(() => sendResponse({ success: true }))
+      .catch((e) => sendResponse({ success: false, error: e.message }));
     return true;
   }
 });

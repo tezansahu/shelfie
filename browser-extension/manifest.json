@@ -10,7 +10,8 @@
     "storage",
     "scripting",
     "tabs",
-    "notifications",
+  "notifications",
+  "identity",
     "alarms"
   ],
   

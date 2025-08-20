@@ -125,32 +125,34 @@ serve(async (req) => {
   }
 
   try {
-    // Get the authorization header
+    // Get the authorization header (Supabase JWT from the extension)
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
-      throw new Error('Authorization header is required');
+      return new Response(
+        JSON.stringify({ error: 'Authentication required to save items', details: 'Missing Authorization header' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
-    // Extract the Google access token
-    const token = authHeader.replace('Bearer ', '');
-    
-    // Validate Google access token and get user info
-    console.log('Validating Google access token...');
-    const googleResponse = await fetch(`https://www.googleapis.com/oauth2/v2/userinfo?access_token=${token}`);
-    
-    if (!googleResponse.ok) {
-      throw new Error('Invalid or expired Google access token');
-    }
-    
-    const googleUser = await googleResponse.json();
-    const userId = `google_${googleUser.id}`;
-    
-    console.log(`Authenticated user: ${googleUser.email} (${userId})`);
-
-    // Initialize Supabase client with service role key for database operations
+    // Initialize Supabase client with service role key but forward user's token for RLS/auth.uid()
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
+      global: { headers: { Authorization: authHeader } }
+    });
+
+    // Verify user authentication
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      console.error('Authentication failed:', authError);
+      return new Response(
+        JSON.stringify({ error: 'Authentication required to save items', details: authError?.message || 'Invalid or expired token' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log(`Authenticated user: ${user.email} (${user.id})`);
 
     const requestBody: SaveUrlRequest = await req.json();
     const { 
@@ -168,13 +170,13 @@ serve(async (req) => {
     const cleanUrl = stripTrackingParams(new URL(url));
     const domain = parsedUrl.hostname;
 
-    console.log(`Processing URL: ${url} (domain: ${domain}) for user: ${userId}`);
+  console.log(`Processing URL: ${url} (domain: ${domain}) for user: ${user.id}`);
 
     // Check for existing item to prevent duplicates (for this user)
     const { data: existingItem } = await supabase
       .from('items')
       .select('id, url, canonical_url')
-      .eq('user_id', userId)
+      .eq('user_id', user.id)
       .or(`url.eq.${url},canonical_url.eq.${url},url.eq.${cleanUrl.toString()},canonical_url.eq.${cleanUrl.toString()}`)
       .maybeSingle();
 
@@ -268,10 +270,10 @@ serve(async (req) => {
     console.log('Inserting item into database...');
 
     // Insert into database
-    const { data, error } = await supabase
+  const { data, error } = await supabase
       .from('items')
       .insert({
-        user_id: userId,  // Associate with authenticated user
+    user_id: user.id,  // Associate with authenticated user
         url: cleanUrl.toString(),
         canonical_url,
         domain,

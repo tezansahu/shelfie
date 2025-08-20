@@ -115,9 +115,19 @@
       ⚠️ Not configured. Please update config.js with your Supabase credentials.
     </div>
     
+    <div id="status-auth-required" class="status not-configured hidden">
+      🔒 Sign in with Google to start saving with Shelfie.
+    </div>
+    
     <div class="actions">
-      <button id="save-current" class="primary-button">
+      <button id="sign-in" class="primary-button hidden">
+        🔑 Sign in with Google
+      </button>
+      <button id="save-current" class="primary-button hidden">
         📝 Save Current Page
+      </button>
+      <button id="sign-out" class="secondary-button hidden">
+        🚪 Sign out
       </button>
     </div>
     

@@ -1,14 +1,19 @@
 // Popup script for Shelfie extension
 document.addEventListener('DOMContentLoaded', async () => {
   const saveCurrentBtn = document.getElementById('save-current');
+  const signInBtn = document.getElementById('sign-in');
+  const signOutBtn = document.getElementById('sign-out');
   const statusReady = document.getElementById('status-ready');
   const statusNotConfigured = document.getElementById('status-not-configured');
+  const statusAuthRequired = document.getElementById('status-auth-required');
 
   // Check configuration status
   await checkStatus();
 
   // Event listeners
   saveCurrentBtn.addEventListener('click', saveCurrentPage);
+  signInBtn.addEventListener('click', signIn);
+  signOutBtn.addEventListener('click', signOut);
 
   async function checkStatus() {
     try {
@@ -16,19 +21,42 @@ document.addEventListener('DOMContentLoaded', async () => {
         chrome.runtime.sendMessage({ action: 'check-status' }, resolve);
       });
 
-      if (status.configured) {
+      if (!status.configured) {
+        statusReady.classList.add('hidden');
+        statusNotConfigured.classList.remove('hidden');
+        statusAuthRequired.classList.add('hidden');
+        signInBtn.classList.add('hidden');
+        saveCurrentBtn.classList.add('hidden');
+        signOutBtn.classList.add('hidden');
+        saveCurrentBtn.disabled = true;
+        return;
+      }
+
+      statusNotConfigured.classList.add('hidden');
+
+      if (status.isAuthenticated) {
         statusReady.classList.remove('hidden');
-        statusNotConfigured.classList.add('hidden');
+        statusAuthRequired.classList.add('hidden');
+        signInBtn.classList.add('hidden');
+        saveCurrentBtn.classList.remove('hidden');
+        signOutBtn.classList.remove('hidden');
         saveCurrentBtn.disabled = false;
       } else {
         statusReady.classList.add('hidden');
-        statusNotConfigured.classList.remove('hidden');
+        statusAuthRequired.classList.remove('hidden');
+        signInBtn.classList.remove('hidden');
+        saveCurrentBtn.classList.add('hidden');
+        signOutBtn.classList.add('hidden');
         saveCurrentBtn.disabled = true;
       }
     } catch (error) {
       console.error('Failed to check status:', error);
       statusReady.classList.add('hidden');
       statusNotConfigured.classList.remove('hidden');
+      statusAuthRequired.classList.add('hidden');
+      signInBtn.classList.add('hidden');
+      saveCurrentBtn.classList.add('hidden');
+      signOutBtn.classList.add('hidden');
       saveCurrentBtn.disabled = true;
     }
   }
@@ -65,5 +93,33 @@ document.addEventListener('DOMContentLoaded', async () => {
         saveCurrentBtn.disabled = false;
       }, 2000);
     }
+  }
+
+  async function signIn() {
+    signInBtn.textContent = '⏳ Signing in...';
+    signInBtn.disabled = true;
+    const res = await new Promise((resolve) => {
+      chrome.runtime.sendMessage({ action: 'sign-in' }, resolve);
+    });
+    if (res?.success) {
+      await checkStatus();
+    } else {
+      console.error('Sign-in failed:', res?.error);
+    }
+    signInBtn.textContent = '🔑 Sign in with Google';
+    signInBtn.disabled = false;
+  }
+
+  async function signOut() {
+    signOutBtn.textContent = '⏳ Signing out...';
+    signOutBtn.disabled = true;
+    const res = await new Promise((resolve) => {
+      chrome.runtime.sendMessage({ action: 'sign-out' }, resolve);
+    });
+    if (res?.success) {
+      await checkStatus();
+    }
+    signOutBtn.textContent = '🚪 Sign out';
+    signOutBtn.disabled = false;
   }
 });
